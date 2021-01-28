@@ -73,9 +73,9 @@ def read_texture(flist, size=256, path='./resource/texture/'):
         else:
             img_tex = cv2.hconcat([img_tex, img, img, img])
     
-    print(img_tex.shape)
-    cv2.imshow("tex", img_tex)
-    cv2.waitKey(0)
+    #print(img_tex.shape)
+    #cv2.imshow("tex", img_tex)
+    #cv2.waitKey(0)
 
     img_tex = cv2.cvtColor(img_tex, cv2.COLOR_RGB2BGR)
     return img_tex
