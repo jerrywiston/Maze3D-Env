@@ -1,3 +1,6 @@
+##############################################
+# Multiple textures, solve the sampling problem.
+##############################################
 import trimesh
 import pyrender
 import numpy as np
@@ -69,13 +72,11 @@ def read_texture(flist, size=256, path='./resource/texture/'):
         img = cv2.imread(path+fname)
         img = cv2.resize(img, (size, size), interpolation=cv2.INTER_CUBIC)
         if img_tex is None:
+            # Duplicate to solbe the sampling problem.
             img_tex = cv2.hconcat([img, img, img])
         else:
+            # Combine multiple textures.
             img_tex = cv2.hconcat([img_tex, img, img, img])
-    
-    #print(img_tex.shape)
-    #cv2.imshow("tex", img_tex)
-    #cv2.waitKey(0)
 
     img_tex = cv2.cvtColor(img_tex, cv2.COLOR_RGB2BGR)
     return img_tex
@@ -125,9 +126,9 @@ def gen_mesh(maze):
 
     return mesh_floor_pr, mesh_wall_pr
 
-def gen_scene(w=11, h=11, room_max=(4,4), prob=0.5):
+def gen_scene(w=11, h=11, room_max=(5,5), prob=0.5):
     # Generate Maze
-    maze = maze_gen.gen_maze(11,11,(5,5),0.5)
+    maze = maze_gen.gen_maze(11,11,room_max,prob)
     # Pyrender
     mesh_floor_pr, mesh_wall_pr = gen_mesh(maze)
     amb_intensity = 0.5

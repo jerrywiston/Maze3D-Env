@@ -1,3 +1,6 @@
+##############################################
+# Only one texture for the wall and floor
+##############################################
 import trimesh
 import pyrender
 import numpy as np
@@ -5,54 +8,44 @@ import glm
 import cv2
 import maze_gen
 
-def get_struct_floor(v_offset, f_offset, tex_id=0, tex_num=1):
+def get_struct_floor(v_offset, f_offset):
     v = [[0.0+v_offset[0], 0.0+v_offset[1], 0.0], [1.0+v_offset[0], 0.0+v_offset[1], 0.0], 
         [0.0+v_offset[0], 1.0+v_offset[1], 0.0], [1.0+v_offset[0], 1.0+v_offset[1], 0.0]]
     vn = [[0.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.0, 0.0, 1.0]]
     f = [[0+f_offset,1+f_offset,3+f_offset], [0+f_offset,3+f_offset,2+f_offset]]
-    temp1 = tex_id / tex_num
-    temp2 = (tex_id+1) / tex_num
-    uv = [[temp1, 0.0], [temp2, 0.0], [temp1, 1.0], [temp2, 1.0]]
+    uv = [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]]
     return v, vn, f, uv, 4
 
-def get_struct_wall_top(v_offset, f_offset, tex_id=0, tex_num=1):
+def get_struct_wall_top(v_offset, f_offset):
     v = [[0.0+v_offset[0], 0.0+v_offset[1], 0.0], [0.0+v_offset[0], 0.0+v_offset[1], 1.0], 
         [0.0+v_offset[0], 1.0+v_offset[1], 0.0], [0.0+v_offset[0], 1.0+v_offset[1], 1.0]]
     vn = [[0.0, 1.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]]
     f = [[0+f_offset,3+f_offset,1+f_offset], [0+f_offset,2+f_offset,3+f_offset]]
-    temp1 = tex_id / tex_num
-    temp2 = (tex_id+1) / tex_num
-    uv = [[temp1, 0.0], [temp1, 1.0], [temp2, 0.0], [temp2, 1.0]]
+    uv = [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]]
     return v, vn, f, uv, 4
 
-def get_struct_wall_buttom(v_offset, f_offset, tex_id=0, tex_num=1):
+def get_struct_wall_buttom(v_offset, f_offset):
     v = [[1.0+v_offset[0], 0.0+v_offset[1], 0.0], [1.0+v_offset[0], 0.0+v_offset[1], 1.0], 
         [1.0+v_offset[0], 1.0+v_offset[1], 0.0], [1.0+v_offset[0], 1.0+v_offset[1], 1.0]]
     vn = [[0.0, 1.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]]
     f = [[0+f_offset,1+f_offset,3+f_offset], [0+f_offset,3+f_offset,2+f_offset]]
-    temp1 = tex_id / tex_num
-    temp2 = (tex_id+1) / tex_num
-    uv = [[temp2, 0.0], [temp2, 1.0], [temp1, 0.0], [temp1, 1.0]]
+    uv = [[1.0, 0.0], [1.0, 1.0], [0.0, 0.0], [0.0, 1.0]]
     return v, vn, f, uv, 4
 
-def get_struct_wall_left(v_offset, f_offset, tex_id=0, tex_num=1):
+def get_struct_wall_left(v_offset, f_offset):
     v = [[0.0+v_offset[0], 0.0+v_offset[1], 0.0], [0.0+v_offset[0], 0.0+v_offset[1], 1.0], 
         [1.0+v_offset[0], 0.0+v_offset[1], 0.0], [1.0+v_offset[0], 0.0+v_offset[1], 1.0]]
     vn = [[0.0, 1.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]]
     f = [[0+f_offset,1+f_offset,3+f_offset], [0+f_offset,3+f_offset,2+f_offset]]
-    temp1 = tex_id / tex_num
-    temp2 = (tex_id+1) / tex_num
-    uv = [[temp2, 0.0], [temp2, 1.0], [temp1, 0.0], [temp1, 1.0]]
+    uv = [[1.0, 0.0], [1.0, 1.0], [0.0, 0.0], [0.0, 1.0]]
     return v, vn, f, uv, 4
 
-def get_struct_wall_right(v_offset, f_offset, tex_id=0, tex_num=1):
+def get_struct_wall_right(v_offset, f_offset):
     v = [[0.0+v_offset[0], 1.0+v_offset[1], 0.0], [0.0+v_offset[0], 1.0+v_offset[1], 1.0], 
         [1.0+v_offset[0], 1.0+v_offset[1], 0.0], [1.0+v_offset[0], 1.0+v_offset[1], 1.0]]
     vn = [[0.0, 1.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]]
     f = [[0+f_offset,3+f_offset,1+f_offset], [0+f_offset,2+f_offset,3+f_offset]]
-    temp1 = tex_id / tex_num
-    temp2 = (tex_id+1) / tex_num
-    uv = [[temp1, 0.0], [temp1, 1.0], [temp2, 0.0], [temp2, 1.0]]
+    uv = [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]]
     return v, vn, f, uv, 4
 
 def add_struct(v, vn, f, uv, foff, struct_obj):
@@ -62,19 +55,6 @@ def add_struct(v, vn, f, uv, foff, struct_obj):
     struct_obj['uv'] += uv
     struct_obj['foff'] += foff
     return struct_obj
-
-def read_texture(flist, size=256, path='./resource/texture/'):
-    img_tex = None
-    for fname in flist:
-        img = cv2.imread(path+fname)
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-        img = cv2.resize(img, (size, size), interpolation=cv2.INTER_CUBIC)
-        if img_tex is None:
-            img_tex = img.copy()
-        else:
-            img_tex = cv2.hconcat([img_tex, img])
-    
-    return img_tex
 
 def gen_mesh(maze):
     struct_floor = {'v':[], 'vn':[], 'f':[], 'uv':[], 'foff':0}
@@ -87,19 +67,19 @@ def gen_mesh(maze):
                 struct_floor = add_struct(v, vn, f, uv, foff, struct_floor)
                 # Build Wall Buttom
                 if maze[j+1,i]==255:
-                    v, vn, f, uv, foff = get_struct_wall_buttom((j,i), struct_wall['foff'], maze[j,i], 4)
+                    v, vn, f, uv, foff = get_struct_wall_buttom((j,i), struct_wall['foff'])
                     struct_wall = add_struct(v, vn, f, uv, foff, struct_wall)
                 # Build Wall Top
                 if maze[j-1,i]==255:
-                    v, vn, f, uv, foff = get_struct_wall_top((j,i), struct_wall['foff'], maze[j,i], 4)
+                    v, vn, f, uv, foff = get_struct_wall_top((j,i), struct_wall['foff'])
                     struct_wall = add_struct(v, vn, f, uv, foff, struct_wall)
                 # Build Wall Left
                 if maze[j,i-1]==255:
-                    v, vn, f, uv, foff = get_struct_wall_left((j,i), struct_wall['foff'], maze[j,i], 4)
+                    v, vn, f, uv, foff = get_struct_wall_left((j,i), struct_wall['foff'])
                     struct_wall = add_struct(v, vn, f, uv, foff, struct_wall)
                 # Build Wall Right
                 if maze[j,i+1]==255:
-                    v, vn, f, uv, foff = get_struct_wall_right((j,i), struct_wall['foff'], maze[j,i], 4)
+                    v, vn, f, uv, foff = get_struct_wall_right((j,i), struct_wall['foff'])
                     struct_wall = add_struct(v, vn, f, uv, foff, struct_wall)
 
     # Texture Floor
@@ -112,8 +92,9 @@ def gen_mesh(maze):
     mesh_floor_pr = pyrender.Mesh.from_trimesh(mesh_floor)
 
     # Texture Wall
-    tex_size = 256
-    image_wall = read_texture(['wall_01.jpg', 'peko.jpg', 'wall_02.jpg', 'wall_03.jpg'], tex_size)
+    #image_wall = cv2.imread("resource/texture/peko.jpg")
+    image_wall = cv2.imread("resource/texture/wall_01.jpg")
+    image_wall = cv2.cvtColor(image_wall, cv2.COLOR_RGB2BGR)
     material_wall = trimesh.visual.texture.SimpleMaterial(image=image_wall)
     color_visuals_wall = trimesh.visual.TextureVisuals(uv=struct_wall['uv'], image=image_wall, material=material_wall)
     # Mesh Wall
