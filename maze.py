@@ -1,62 +1,14 @@
 ##############################################
 # Multiple textures, solve the sampling problem.
 ##############################################
+import os
 import trimesh
 import pyrender
 import numpy as np
 import glm
 import cv2
 import maze_gen
-
-def get_struct_floor(v_offset, f_offset, tex_id=0, tex_num=1):
-    v = [[0.0+v_offset[0], 0.0+v_offset[1], 0.0], [1.0+v_offset[0], 0.0+v_offset[1], 0.0], 
-        [0.0+v_offset[0], 1.0+v_offset[1], 0.0], [1.0+v_offset[0], 1.0+v_offset[1], 0.0]]
-    vn = [[0.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.0, 0.0, 1.0], [0.0, 0.0, 1.0]]
-    f = [[0+f_offset,1+f_offset,3+f_offset], [0+f_offset,3+f_offset,2+f_offset]]
-    temp1 = (1+tex_id*3) / (3*tex_num)
-    temp2 = (2+tex_id*3) / (3*tex_num)
-    uv = [[temp1, 0.0], [temp2, 0.0], [temp1, 1.0], [temp2, 1.0]]
-    return v, vn, f, uv, 4
-
-def get_struct_wall_top(v_offset, f_offset, tex_id=0, tex_num=1):
-    v = [[0.0+v_offset[0], 0.0+v_offset[1], 0.0], [0.0+v_offset[0], 0.0+v_offset[1], 1.0], 
-        [0.0+v_offset[0], 1.0+v_offset[1], 0.0], [0.0+v_offset[0], 1.0+v_offset[1], 1.0]]
-    vn = [[0.0, 1.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]]
-    f = [[0+f_offset,3+f_offset,1+f_offset], [0+f_offset,2+f_offset,3+f_offset]]
-    temp1 = (1+tex_id*3) / (3*tex_num)
-    temp2 = (2+tex_id*3) / (3*tex_num)
-    uv = [[temp1, 0.0], [temp1, 1.0], [temp2, 0.0], [temp2, 1.0]]
-    return v, vn, f, uv, 4
-
-def get_struct_wall_buttom(v_offset, f_offset, tex_id=0, tex_num=1):
-    v = [[1.0+v_offset[0], 0.0+v_offset[1], 0.0], [1.0+v_offset[0], 0.0+v_offset[1], 1.0], 
-        [1.0+v_offset[0], 1.0+v_offset[1], 0.0], [1.0+v_offset[0], 1.0+v_offset[1], 1.0]]
-    vn = [[0.0, 1.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]]
-    f = [[0+f_offset,1+f_offset,3+f_offset], [0+f_offset,3+f_offset,2+f_offset]]
-    temp1 = (1+tex_id*3) / (3*tex_num)
-    temp2 = (2+tex_id*3) / (3*tex_num)
-    uv = [[temp2, 0.0], [temp2, 1.0], [temp1, 0.0], [temp1, 1.0]]
-    return v, vn, f, uv, 4
-
-def get_struct_wall_left(v_offset, f_offset, tex_id=0, tex_num=1):
-    v = [[0.0+v_offset[0], 0.0+v_offset[1], 0.0], [0.0+v_offset[0], 0.0+v_offset[1], 1.0], 
-        [1.0+v_offset[0], 0.0+v_offset[1], 0.0], [1.0+v_offset[0], 0.0+v_offset[1], 1.0]]
-    vn = [[0.0, 1.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]]
-    f = [[0+f_offset,1+f_offset,3+f_offset], [0+f_offset,3+f_offset,2+f_offset]]
-    temp1 = (1+tex_id*3) / (3*tex_num)
-    temp2 = (2+tex_id*3) / (3*tex_num)
-    uv = [[temp2, 0.0], [temp2, 1.0], [temp1, 0.0], [temp1, 1.0]]
-    return v, vn, f, uv, 4
-
-def get_struct_wall_right(v_offset, f_offset, tex_id=0, tex_num=1):
-    v = [[0.0+v_offset[0], 1.0+v_offset[1], 0.0], [0.0+v_offset[0], 1.0+v_offset[1], 1.0], 
-        [1.0+v_offset[0], 1.0+v_offset[1], 0.0], [1.0+v_offset[0], 1.0+v_offset[1], 1.0]]
-    vn = [[0.0, 1.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]]
-    f = [[0+f_offset,3+f_offset,1+f_offset], [0+f_offset,2+f_offset,3+f_offset]]
-    temp1 = (1+tex_id*3) / (3*tex_num)
-    temp2 = (2+tex_id*3) / (3*tex_num)
-    uv = [[temp1, 0.0], [temp1, 1.0], [temp2, 0.0], [temp2, 1.0]]
-    return v, vn, f, uv, 4
+import structure
 
 def add_struct(v, vn, f, uv, foff, struct_obj):
     struct_obj['v'] += v
@@ -66,10 +18,10 @@ def add_struct(v, vn, f, uv, foff, struct_obj):
     struct_obj['foff'] += foff
     return struct_obj
 
-def read_texture(flist, size=256, path='./resource/texture/'):
+def read_texture(path, flist, size=256):
     img_tex = None
     for fname in flist:
-        img = cv2.imread(path+fname)
+        img = cv2.imread(os.path.join(path,fname))
         img = cv2.resize(img, (size, size), interpolation=cv2.INTER_CUBIC)
         if img_tex is None:
             # Duplicate to solbe the sampling problem.
@@ -81,35 +33,40 @@ def read_texture(flist, size=256, path='./resource/texture/'):
     img_tex = cv2.cvtColor(img_tex, cv2.COLOR_RGB2BGR)
     return img_tex
 
-def gen_mesh(maze):
+def gen_maze_mesh(maze):
+    path_floor = './resource/texture/floor'
+    flist_floor = os.listdir(path_floor)
+    path_wall = './resource/texture/wall'
+    flist_wall = os.listdir(path_wall)
+
     struct_floor = {'v':[], 'vn':[], 'f':[], 'uv':[], 'foff':0}
     struct_wall = {'v':[], 'vn':[], 'f':[], 'uv':[], 'foff':0}
     for j in range(1,maze.shape[0]-1):
         for i in range(1,maze.shape[1]-1):
             if maze[j,i] < 255:
                 # Build Floor
-                v, vn, f, uv, foff = get_struct_floor((j,i), struct_floor['foff'])
+                v, vn, f, uv, foff = structure.get_struct_floor((j,i), struct_floor['foff'], 0, len(flist_floor))
                 struct_floor = add_struct(v, vn, f, uv, foff, struct_floor)
                 # Build Wall Buttom
                 if maze[j+1,i]==255:
-                    v, vn, f, uv, foff = get_struct_wall_buttom((j,i), struct_wall['foff'], maze[j,i], 4)
+                    v, vn, f, uv, foff = structure.get_struct_wall_buttom((j,i), struct_wall['foff'], maze[j,i], len(flist_wall))
                     struct_wall = add_struct(v, vn, f, uv, foff, struct_wall)
                 # Build Wall Top
                 if maze[j-1,i]==255:
-                    v, vn, f, uv, foff = get_struct_wall_top((j,i), struct_wall['foff'], maze[j,i], 4)
+                    v, vn, f, uv, foff = structure.get_struct_wall_top((j,i), struct_wall['foff'], maze[j,i], len(flist_wall))
                     struct_wall = add_struct(v, vn, f, uv, foff, struct_wall)
                 # Build Wall Left
                 if maze[j,i-1]==255:
-                    v, vn, f, uv, foff = get_struct_wall_left((j,i), struct_wall['foff'], maze[j,i], 4)
+                    v, vn, f, uv, foff = structure.get_struct_wall_left((j,i), struct_wall['foff'], maze[j,i], len(flist_wall))
                     struct_wall = add_struct(v, vn, f, uv, foff, struct_wall)
                 # Build Wall Right
                 if maze[j,i+1]==255:
-                    v, vn, f, uv, foff = get_struct_wall_right((j,i), struct_wall['foff'], maze[j,i], 4)
+                    v, vn, f, uv, foff = structure.get_struct_wall_right((j,i), struct_wall['foff'], maze[j,i], len(flist_wall))
                     struct_wall = add_struct(v, vn, f, uv, foff, struct_wall)
 
     tex_size = 256
     # Texture Floor
-    image_floor = read_texture(['floor_01.jpg'], tex_size)
+    image_floor = read_texture(path_floor, flist_floor, tex_size)
     material_floor = trimesh.visual.texture.SimpleMaterial(image=image_floor)
     color_visuals_floor = trimesh.visual.TextureVisuals(uv=struct_floor['uv'], image=image_floor, material=material_floor)
     # Mesh Floor
@@ -117,7 +74,7 @@ def gen_mesh(maze):
     mesh_floor_pr = pyrender.Mesh.from_trimesh(mesh_floor)
 
     # Texture Wall
-    image_wall = read_texture(['wall_01.jpg', 'peko.jpg', 'wall_02.jpg', 'wall_03.jpg'], tex_size)
+    image_wall = read_texture(path_wall, flist_wall, tex_size)
     material_wall = trimesh.visual.texture.SimpleMaterial(image=image_wall)
     color_visuals_wall = trimesh.visual.TextureVisuals(uv=struct_wall['uv'], image=image_wall, material=material_wall)
     # Mesh Wall
@@ -126,11 +83,19 @@ def gen_mesh(maze):
 
     return mesh_floor_pr, mesh_wall_pr
 
+def gen_obj_mesh(maze, gen_prob=0.2):
+    for j in range(1,maze.shape[0]-1):
+        for i in range(1,maze.shape[1]-1):
+            # Check in the room
+            if 0 < maze[j,i] < 255 and np.random.rand() < gen_prob:
+                mesh_obj = trimesh.load('./resource/obj/Cylinder.obj')
+                mesh_obj_pr = pyrender.Mesh.from_trimesh(mesh_floor)
+
 def gen_scene(w=11, h=11, room_max=(5,5), prob=0.5):
     # Generate Maze
     maze = maze_gen.gen_maze(11,11,room_max,prob)
     # Pyrender
-    mesh_floor_pr, mesh_wall_pr = gen_mesh(maze)
+    mesh_floor_pr, mesh_wall_pr = gen_maze_mesh(maze)
     amb_intensity = 0.5
     bg_color = np.array([180,200,255,0])
     scene = pyrender.Scene(ambient_light=amb_intensity*np.ones(3), bg_color=bg_color)
