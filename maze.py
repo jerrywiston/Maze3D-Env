@@ -9,12 +9,13 @@ import glm
 import cv2
 import maze_gen
 import structure
+import obj_loader
 
-def add_struct(v, vn, f, uv, foff, struct_obj):
+def add_struct(v, vn, f, vt, foff, struct_obj):
     struct_obj['v'] += v
     struct_obj['vn'] += vn
     struct_obj['f'] += f
-    struct_obj['uv'] += uv
+    struct_obj['vt'] += vt
     struct_obj['foff'] += foff
     return struct_obj
 
@@ -39,36 +40,36 @@ def gen_maze_mesh(maze):
     path_wall = './resource/texture/wall'
     flist_wall = os.listdir(path_wall)
 
-    struct_floor = {'v':[], 'vn':[], 'f':[], 'uv':[], 'foff':0}
-    struct_wall = {'v':[], 'vn':[], 'f':[], 'uv':[], 'foff':0}
+    struct_floor = {'v':[], 'vn':[], 'f':[], 'vt':[], 'foff':0}
+    struct_wall = {'v':[], 'vn':[], 'f':[], 'vt':[], 'foff':0}
     for j in range(1,maze.shape[0]-1):
         for i in range(1,maze.shape[1]-1):
             if maze[j,i] < 255:
                 # Build Floor
-                v, vn, f, uv, foff = structure.get_struct_floor((j,i), struct_floor['foff'], 0, len(flist_floor))
-                struct_floor = add_struct(v, vn, f, uv, foff, struct_floor)
+                v, vn, f, vt, foff = structure.get_struct_floor((j,i), struct_floor['foff'], 0, len(flist_floor))
+                struct_floor = add_struct(v, vn, f, vt, foff, struct_floor)
                 # Build Wall Buttom
                 if maze[j+1,i]==255:
-                    v, vn, f, uv, foff = structure.get_struct_wall_buttom((j,i), struct_wall['foff'], maze[j,i], len(flist_wall))
-                    struct_wall = add_struct(v, vn, f, uv, foff, struct_wall)
+                    v, vn, f, vt, foff = structure.get_struct_wall_buttom((j,i), struct_wall['foff'], maze[j,i], len(flist_wall))
+                    struct_wall = add_struct(v, vn, f, vt, foff, struct_wall)
                 # Build Wall Top
                 if maze[j-1,i]==255:
-                    v, vn, f, uv, foff = structure.get_struct_wall_top((j,i), struct_wall['foff'], maze[j,i], len(flist_wall))
-                    struct_wall = add_struct(v, vn, f, uv, foff, struct_wall)
+                    v, vn, f, vt, foff = structure.get_struct_wall_top((j,i), struct_wall['foff'], maze[j,i], len(flist_wall))
+                    struct_wall = add_struct(v, vn, f, vt, foff, struct_wall)
                 # Build Wall Left
                 if maze[j,i-1]==255:
-                    v, vn, f, uv, foff = structure.get_struct_wall_left((j,i), struct_wall['foff'], maze[j,i], len(flist_wall))
-                    struct_wall = add_struct(v, vn, f, uv, foff, struct_wall)
+                    v, vn, f, vt, foff = structure.get_struct_wall_left((j,i), struct_wall['foff'], maze[j,i], len(flist_wall))
+                    struct_wall = add_struct(v, vn, f, vt, foff, struct_wall)
                 # Build Wall Right
                 if maze[j,i+1]==255:
-                    v, vn, f, uv, foff = structure.get_struct_wall_right((j,i), struct_wall['foff'], maze[j,i], len(flist_wall))
-                    struct_wall = add_struct(v, vn, f, uv, foff, struct_wall)
+                    v, vn, f, vt, foff = structure.get_struct_wall_right((j,i), struct_wall['foff'], maze[j,i], len(flist_wall))
+                    struct_wall = add_struct(v, vn, f, vt, foff, struct_wall)
 
     tex_size = 256
     # Texture Floor
     image_floor = read_texture(path_floor, flist_floor, tex_size)
     material_floor = trimesh.visual.texture.SimpleMaterial(image=image_floor)
-    color_visuals_floor = trimesh.visual.TextureVisuals(uv=struct_floor['uv'], image=image_floor, material=material_floor)
+    color_visuals_floor = trimesh.visual.TextureVisuals(uv=struct_floor['vt'], image=image_floor, material=material_floor)
     # Mesh Floor
     mesh_floor = trimesh.Trimesh(vertices=struct_floor['v'], faces=struct_floor['f'], visual=color_visuals_floor)
     mesh_floor_pr = pyrender.Mesh.from_trimesh(mesh_floor)
@@ -76,7 +77,7 @@ def gen_maze_mesh(maze):
     # Texture Wall
     image_wall = read_texture(path_wall, flist_wall, tex_size)
     material_wall = trimesh.visual.texture.SimpleMaterial(image=image_wall)
-    color_visuals_wall = trimesh.visual.TextureVisuals(uv=struct_wall['uv'], image=image_wall, material=material_wall)
+    color_visuals_wall = trimesh.visual.TextureVisuals(uv=struct_wall['vt'], image=image_wall, material=material_wall)
     # Mesh Wall
     mesh_wall = trimesh.Trimesh(vertices=struct_wall['v'], faces=struct_wall['f'], visual=color_visuals_wall)
     mesh_wall_pr = pyrender.Mesh.from_trimesh(mesh_wall)
@@ -84,23 +85,39 @@ def gen_maze_mesh(maze):
     return mesh_floor_pr, mesh_wall_pr
 
 def gen_obj_mesh(maze, gen_prob=0.2):
+    struct_obj = {'v':[], 'vn':[], 'f':[], 'vt':[], 'foff':0}
+    has_obj = False
     for j in range(1,maze.shape[0]-1):
         for i in range(1,maze.shape[1]-1):
             # Check in the room
             if 0 < maze[j,i] < 255 and np.random.rand() < gen_prob:
-                mesh_obj = trimesh.load('./resource/obj/Cylinder.obj')
-                mesh_obj_pr = pyrender.Mesh.from_trimesh(mesh_floor)
+                v, vn, f, vt, foff = obj_loader.load_('./resource/obj/Capsule.obj', (j+0.5,i+0.5,0.5), struct_obj['foff'], 1, 0)
+                struct_obj = add_struct(v, vn, f, vt, foff, struct_obj)
+                has_obj = True
+    print(len(struct_obj['v']), struct_obj['foff'])
+    if not has_obj:
+        return None
+    image_obj = read_texture('./resource/texture/obj/', ['red.jpg'], 256)
+    material_obj = trimesh.visual.texture.SimpleMaterial(image=image_obj)
+    color_visuals_obj = trimesh.visual.TextureVisuals(uv=struct_obj['vt'], image=image_obj, material=material_obj)
 
+    mesh_obj = trimesh.Trimesh(vertices=struct_obj['v'], faces=struct_obj['f'], visual=color_visuals_obj)
+    mesh_obj_pr = pyrender.Mesh.from_trimesh(mesh_obj)
+    return mesh_obj_pr
+    
 def gen_scene(w=11, h=11, room_max=(5,5), prob=0.5):
     # Generate Maze
     maze = maze_gen.gen_maze(11,11,room_max,prob)
     # Pyrender
     mesh_floor_pr, mesh_wall_pr = gen_maze_mesh(maze)
-    amb_intensity = 0.5
+    mesh_obj_pr = gen_obj_mesh(maze)
+    amb_intensity = 0.1#0.5
     bg_color = np.array([180,200,255,0])
     scene = pyrender.Scene(ambient_light=amb_intensity*np.ones(3), bg_color=bg_color)
     scene.add(mesh_floor_pr)
     scene.add(mesh_wall_pr)
+    if mesh_obj_pr is not None:
+        scene.add(mesh_obj_pr)
     return scene, maze
 
 def create_raymond_lights(intensity=1.0):
@@ -148,9 +165,14 @@ if __name__ == "__main__":
     #light_nodes = create_raymond_lights(intensity=5.0)
     #for light in light_nodes:
     #    scene.add_node(light)
+    
+    dir_light = pyrender.DirectionalLight(color=np.ones(3), intensity=2)
+    m = glm.mat4_cast(glm.quat(glm.vec3(0,0.4,np.pi/2)))
+    light_node = pyrender.Node(light=dir_light, matrix=m)
+    scene.add_node(light_node)
 
     ############### Viewer ###############
-    USE_VIEWER = False
+    USE_VIEWER = True
     render_flags = { \
         "flip_wireframe":False, #default:False
         "all_wireframe":False,   #default:False
@@ -161,7 +183,7 @@ if __name__ == "__main__":
         "point_size":1,         #default:1
     }
     if USE_VIEWER:
-        pyrender.Viewer(scene, render_flags=render_flags, use_raymond_lighting=True)
+        pyrender.Viewer(scene, render_flags=render_flags, use_raymond_lighting=False)
     
     ############### Off-Screen Render ###############
     import time
@@ -189,7 +211,7 @@ if __name__ == "__main__":
         if render_frame:
             start = time.time()
             r = pyrender.OffscreenRenderer(256,256)
-            flags = pyrender.RenderFlags.SKIP_CULL_FACES #| pyrender.RenderFlags.SHADOWS_ALL
+            flags = pyrender.RenderFlags.SKIP_CULL_FACES | pyrender.RenderFlags.SHADOWS_DIRECTIONAL#| pyrender.RenderFlags.SHADOWS_ALL
             color, depth = r.render(scene, flags)
             end = time.time()
             print(" Time ", end - start)
