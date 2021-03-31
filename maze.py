@@ -89,19 +89,28 @@ def gen_maze_mesh(maze):
     return mesh_floor_pr, mesh_wall_pr
 
 def gen_obj_mesh(maze, gen_prob=0.2):
+    path_obj = './resource/texture/obj'
+    flist_obj = os.listdir(path_obj)
+    path_mesh = './resource/mesh'
+    flist_mesh = os.listdir(path_mesh)
     struct_obj = {'v':[], 'vn':[], 'f':[], 'vt':[], 'foff':0}
     has_obj = False
     for j in range(1,maze.shape[0]-1):
         for i in range(1,maze.shape[1]-1):
             # Check in the room
             if 0 < maze[j,i] < 255 and np.random.rand() < gen_prob:
-                v, vn, f, vt, foff = obj_loader.load_('./resource/obj/Capsule.obj', (j+0.5,i+0.5,0.5), struct_obj['foff'], 1, 0)
+                mesh_id = np.random.randint(len(flist_mesh))
+                color_id = np.random.randint(len(flist_obj))
+                scale = np.random.uniform(0.2,0.7)
+                v, vn, f, vt, foff = obj_loader.load_(os.path.join(path_mesh, flist_mesh[mesh_id]), \
+                            (j+0.5,i+0.5,0.5), struct_obj['foff'], scale, len(flist_obj), color_id)
                 struct_obj = add_struct(v, vn, f, vt, foff, struct_obj)
                 has_obj = True
     print(len(struct_obj['v']), struct_obj['foff'])
     if not has_obj:
         return None
-    image_obj = read_texture('./resource/texture/obj/', ['red.jpg'], 256)
+    
+    image_obj = read_texture(path_obj, flist_obj, 256)
     material_obj = trimesh.visual.texture.SimpleMaterial(image=image_obj)
     color_visuals_obj = trimesh.visual.TextureVisuals(uv=struct_obj['vt'], image=image_obj, material=material_obj)
 

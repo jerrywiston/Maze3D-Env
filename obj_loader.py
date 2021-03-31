@@ -24,7 +24,7 @@ def load(path):
             f3 = int(temp[3].split("/")[0])
             f.append([f1, f2, f3])
 
-def load_(path, v_offset=(0.,0.,0.), f_offset=0, tex_num=1, tex_id=0):
+def load_(path, v_offset=(0.,0.,0.), f_offset=0, scale=0.5, tex_num=1, tex_id=0):
     v = []
     vn = []
     f = []
@@ -36,7 +36,7 @@ def load_(path, v_offset=(0.,0.,0.), f_offset=0, tex_num=1, tex_id=0):
             return v, vn, f, vt, len(v)
         temp = content.strip().split(" ")
         if temp[0] == "v":
-            v.append([0.5*float(temp[1])+v_offset[0], 0.5*float(temp[2])+v_offset[1], 0.5*float(temp[3])+0.5*v_offset[2]])
+            v.append([scale*float(temp[1])+v_offset[0], scale*float(temp[2])+v_offset[1], scale*float(temp[3])+scale*v_offset[2]])
         elif temp[0] == "vn":
             vn.append([float(temp[1]), float(temp[2]), float(temp[3])])
         elif temp[0] == "vt":
