@@ -2,6 +2,7 @@
 # Multiple textures, solve the sampling problem.
 ##############################################
 import os
+import random
 import trimesh
 import pyrender
 import numpy as np
@@ -37,8 +38,11 @@ def read_texture(path, flist, size=256):
 def gen_maze_mesh(maze):
     path_floor = './resource/texture/floor'
     flist_floor = os.listdir(path_floor)
+    random.shuffle(flist_floor)
+
     path_wall = './resource/texture/wall'
     flist_wall = os.listdir(path_wall)
+    random.shuffle(flist_wall)
 
     struct_floor = {'v':[], 'vn':[], 'f':[], 'vt':[], 'foff':0}
     struct_wall = {'v':[], 'vn':[], 'f':[], 'vt':[], 'foff':0}
@@ -46,7 +50,7 @@ def gen_maze_mesh(maze):
         for i in range(1,maze.shape[1]-1):
             if maze[j,i] < 255:
                 # Build Floor
-                v, vn, f, vt, foff = structure.get_struct_floor((j,i), struct_floor['foff'], 0, len(flist_floor))
+                v, vn, f, vt, foff = structure.get_struct_floor((j,i), struct_floor['foff'], maze[j,i], len(flist_floor))
                 struct_floor = add_struct(v, vn, f, vt, foff, struct_floor)
                 # Build Wall Buttom
                 if maze[j+1,i]==255:
@@ -111,8 +115,8 @@ def gen_scene(w=11, h=11, room_max=(5,5), prob=0.5):
     # Pyrender
     mesh_floor_pr, mesh_wall_pr = gen_maze_mesh(maze)
     mesh_obj_pr = gen_obj_mesh(maze)
-    amb_intensity = 0.1#0.5
-    bg_color = np.array([180,200,255,0])
+    amb_intensity = 0.15#0.5
+    bg_color = np.array([160,200,255,0])
     scene = pyrender.Scene(ambient_light=amb_intensity*np.ones(3), bg_color=bg_color)
     scene.add(mesh_floor_pr)
     scene.add(mesh_wall_pr)
@@ -166,19 +170,19 @@ if __name__ == "__main__":
     #for light in light_nodes:
     #    scene.add_node(light)
     
-    dir_light = pyrender.DirectionalLight(color=np.ones(3), intensity=2)
-    m = glm.mat4_cast(glm.quat(glm.vec3(0,0.4,np.pi/2)))
+    dir_light = pyrender.DirectionalLight(color=np.ones(3), intensity=6)
+    m = glm.mat4_cast(glm.quat(glm.vec3(0.5,0.4,np.pi/2)))
     light_node = pyrender.Node(light=dir_light, matrix=m)
     scene.add_node(light_node)
 
     ############### Viewer ###############
-    USE_VIEWER = True
+    USE_VIEWER = False
     render_flags = { \
         "flip_wireframe":False, #default:False
         "all_wireframe":False,   #default:False
         "all_solid":False,      #default:False
         "shadows":True,         #default:False
-        "face_notmals":False,   #default:False
+        "face_normals":False,   #default:False
         "cull_faces":False,     #default:True
         "point_size":1,         #default:1
     }
