@@ -50,23 +50,23 @@ def gen_maze_mesh(maze):
         for i in range(1,maze.shape[1]-1):
             if maze[j,i] < 255:
                 # Build Floor
-                v, vn, f, vt, foff = structure.get_struct_floor((j,i), struct_floor['foff'], maze[j,i], len(flist_floor))
+                v, vn, f, vt, foff = structure.get_struct_floor((i,j), struct_floor['foff'], maze[j,i], len(flist_floor))
                 struct_floor = add_struct(v, vn, f, vt, foff, struct_floor)
                 # Build Wall Buttom
-                if maze[j+1,i]==255:
-                    v, vn, f, vt, foff = structure.get_struct_wall_buttom((j,i), struct_wall['foff'], maze[j,i], len(flist_wall))
+                if maze[j-1,i]==255:
+                    v, vn, f, vt, foff = structure.get_struct_wall_buttom((i,j), struct_wall['foff'], maze[j,i], len(flist_wall))
                     struct_wall = add_struct(v, vn, f, vt, foff, struct_wall)
                 # Build Wall Top
-                if maze[j-1,i]==255:
-                    v, vn, f, vt, foff = structure.get_struct_wall_top((j,i), struct_wall['foff'], maze[j,i], len(flist_wall))
+                if maze[j+1,i]==255:
+                    v, vn, f, vt, foff = structure.get_struct_wall_top((i,j), struct_wall['foff'], maze[j,i], len(flist_wall))
                     struct_wall = add_struct(v, vn, f, vt, foff, struct_wall)
                 # Build Wall Left
                 if maze[j,i-1]==255:
-                    v, vn, f, vt, foff = structure.get_struct_wall_left((j,i), struct_wall['foff'], maze[j,i], len(flist_wall))
+                    v, vn, f, vt, foff = structure.get_struct_wall_left((i,j), struct_wall['foff'], maze[j,i], len(flist_wall))
                     struct_wall = add_struct(v, vn, f, vt, foff, struct_wall)
                 # Build Wall Right
                 if maze[j,i+1]==255:
-                    v, vn, f, vt, foff = structure.get_struct_wall_right((j,i), struct_wall['foff'], maze[j,i], len(flist_wall))
+                    v, vn, f, vt, foff = structure.get_struct_wall_right((i,j), struct_wall['foff'], maze[j,i], len(flist_wall))
                     struct_wall = add_struct(v, vn, f, vt, foff, struct_wall)
 
     tex_size = 256
@@ -101,9 +101,9 @@ def gen_obj_mesh(maze, gen_prob=0.2):
             if 0 < maze[j,i] < 255 and np.random.rand() < gen_prob:
                 mesh_id = np.random.randint(len(flist_mesh))
                 color_id = np.random.randint(len(flist_obj))
-                scale = np.random.uniform(0.2,0.7)
+                scale = np.random.uniform(0.2,0.6)
                 v, vn, f, vt, foff = obj_loader.load_(os.path.join(path_mesh, flist_mesh[mesh_id]), \
-                            (j+0.5,i+0.5,0.5), struct_obj['foff'], scale, len(flist_obj), color_id)
+                            (i+0.5,j+0.5,0.5), struct_obj['foff'], scale, len(flist_obj), color_id)
                 struct_obj = add_struct(v, vn, f, vt, foff, struct_obj)
                 has_obj = True
     print(len(struct_obj['v']), struct_obj['foff'])
@@ -124,7 +124,7 @@ def gen_scene(w=11, h=11, room_max=(5,5), prob=0.5):
     # Pyrender
     mesh_floor_pr, mesh_wall_pr = gen_maze_mesh(maze)
     mesh_obj_pr = gen_obj_mesh(maze)
-    amb_intensity = 0.2#0.5
+    amb_intensity = 0.2
     bg_color = np.array([160,200,255,0])
     scene = pyrender.Scene(ambient_light=amb_intensity*np.ones(3), bg_color=bg_color)
     scene.add(mesh_floor_pr)
@@ -133,52 +133,20 @@ def gen_scene(w=11, h=11, room_max=(5,5), prob=0.5):
         scene.add(mesh_obj_pr)
     return scene, maze
 
-def create_raymond_lights(intensity=1.0):
-    thetas = np.pi * np.array([1.0 / 6.0, 1.0 / 6.0, 1.0 / 6.0])
-    phis = np.pi * np.array([0.0, 2.0 / 3.0, 4.0 / 3.0])
-
-    nodes = []
-
-    for phi, theta in zip(phis, thetas):
-        xp = np.sin(theta) * np.cos(phi)
-        yp = np.sin(theta) * np.sin(phi)
-        zp = np.cos(theta)
-
-        z = np.array([xp, yp, zp])
-        z = z / np.linalg.norm(z)
-        x = np.array([-z[1], z[0], 0.0])
-        if np.linalg.norm(x) == 0:
-            x = np.array([1.0, 0.0, 0.0])
-        x = x / np.linalg.norm(x)
-        y = np.cross(z, x)
-
-        matrix = np.eye(4)
-        matrix[:3,:3] = np.c_[x,y,z]
-        nodes.append(pyrender.Node(
-            light=pyrender.DirectionalLight(color=np.ones(3), intensity=intensity),
-            matrix=matrix
-        ))
-
-    return nodes
-
 if __name__ == "__main__":
-    # Camera
-    scene, maze = gen_scene()
-    agent_info = {"x":5, "y":5, "theta":0}
+    scene, maze = gen_scene(w=11, h=11, room_max=(5,5), prob=0.5)
+
+    ############### Camera ###############
+    #agent_info = {"x":5, "y":5, "theta":0}
+    agent_info = {"x":1, "y":1, "theta":0}
     camera = pyrender.PerspectiveCamera(yfov=np.pi/3.0, aspectRatio=1.0)
-    r = glm.mat4_cast(glm.quat(glm.vec3(-np.pi/2,0,0)))
+    r = glm.mat4_cast(glm.quat(glm.vec3(-np.pi/2,np.pi/2-agent_info['theta'],0)))
     t = glm.translate(glm.mat4(1), glm.vec3(agent_info['x']+0.5,agent_info['y']+0.5,0.5))
     m = r * glm.transpose(t)
     camera_node = pyrender.Node(camera=camera, matrix=m)
     scene.add_node(camera_node)
 
     ############### Light ###############
-    #light = pyrender.SpotLight(color=np.ones(3), intensity=6.0, innerConeAngle=np.pi/4.0, outerConeAngle=np.pi/2.0)
-    #scene.add(light)
-    #light_nodes = create_raymond_lights(intensity=5.0)
-    #for light in light_nodes:
-    #    scene.add_node(light)
-    
     dir_light = pyrender.DirectionalLight(color=np.ones(3), intensity=6)
     m = glm.mat4_cast(glm.quat(glm.vec3(0.5,0.4,np.pi/2)))
     light_node = pyrender.Node(light=dir_light, matrix=m)
@@ -188,7 +156,7 @@ if __name__ == "__main__":
     USE_VIEWER = False
     render_flags = { \
         "flip_wireframe":False, #default:False
-        "all_wireframe":False,   #default:False
+        "all_wireframe":False,  #default:False
         "all_solid":False,      #default:False
         "shadows":True,         #default:False
         "face_normals":False,   #default:False
@@ -203,20 +171,25 @@ if __name__ == "__main__":
     render_frame = True
     render_res = (256, 256)
     while(True):
+        # Draw Maze Map
         print("\r", agent_info['x'], agent_info['y'], agent_info['theta']*180/np.pi, end="")
         maze_re = cv2.cvtColor(maze, cv2.COLOR_GRAY2RGB)
         map_scale = 16
         maze_re = 255-cv2.resize(maze_re, (maze.shape[1]*map_scale, maze.shape[0]*map_scale), interpolation=cv2.INTER_NEAREST)
         maze_draw = maze_re.copy()
+        
         temp_y = int((agent_info['y']+0.5)*map_scale)
         temp_x = int((agent_info['x']+0.5)*map_scale)
-        cv2.circle(maze_draw, (temp_y, temp_x), 4, (255,0,0), 3)
-        temp_y2 = int((agent_info["y"] + 0.5 + 0.4*np.cos(agent_info["theta"])) * map_scale)
-        temp_x2 = int((agent_info["x"] + 0.5 + 0.4*np.sin(agent_info["theta"])) * map_scale)
-        cv2.line(maze_draw, (temp_y, temp_x), (temp_y2, temp_x2), (0,0,255), 3)
+        cv2.circle(maze_draw, (temp_x, temp_y), 4, (255,0,0), 3)
+        temp_y2 = int((agent_info["y"] + 0.5 + 0.4*np.sin(agent_info["theta"])) * map_scale)
+        temp_x2 = int((agent_info["x"] + 0.5 + 0.4*np.cos(agent_info["theta"])) * map_scale)
+        cv2.line(maze_draw, (temp_x, temp_y), (temp_x2, temp_y2), (0,0,255), 3)
+        
+        maze_draw = cv2.flip(maze_draw,0)
         cv2.imshow("maze", maze_draw)
 
-        r = glm.mat4_cast(glm.quat(glm.vec3(-np.pi/2,agent_info['theta'],0)))
+        # Render Agent View
+        r = glm.mat4_cast(glm.quat(glm.vec3(-np.pi/2,np.pi/2-agent_info['theta'],0)))
         t = glm.translate(glm.mat4(1), glm.vec3(agent_info['x']+0.5,agent_info['y']+0.5,0.5))
         m = r * glm.transpose(t)
         m = np.array(m)
@@ -232,30 +205,31 @@ if __name__ == "__main__":
             color = cv2.cvtColor(color, cv2.COLOR_BGR2RGB)
             cv2.imshow("camera", color)
             render_frame = False
-    
+
+        # Control Handling
         k = cv2.waitKey(1)
         if k == 27:
             break
-        if k == ord('w'):
-            agent_info["x"] += 0.1*np.sin(agent_info["theta"])
+        if k == ord('a'):
+            agent_info["x"] -= 0.1*np.sin(agent_info["theta"])
             agent_info["y"] += 0.1*np.cos(agent_info["theta"])
             render_frame = True
-        if k == ord('s'):
-            agent_info["x"] -= 0.1*np.sin(agent_info["theta"])
+        if k == ord('d'):
+            agent_info["x"] += 0.1*np.sin(agent_info["theta"])
             agent_info["y"] -= 0.1*np.cos(agent_info["theta"])
             render_frame = True
-        if k == ord('d'):
+        if k == ord('w'):
             agent_info["x"] += 0.1*np.cos(agent_info["theta"])
-            agent_info["y"] -= 0.1*np.sin(agent_info["theta"])
-            render_frame = True
-        if k == ord('a'):
-            agent_info["x"] -= 0.1*np.cos(agent_info["theta"])
             agent_info["y"] += 0.1*np.sin(agent_info["theta"])
             render_frame = True
-        if k == ord('e'):
-            agent_info["theta"] += np.pi/18
+        if k == ord('s'):
+            agent_info["x"] -= 0.1*np.cos(agent_info["theta"])
+            agent_info["y"] -= 0.1*np.sin(agent_info["theta"])
             render_frame = True
         if k == ord('q'):
+            agent_info["theta"] += np.pi/18
+            render_frame = True
+        if k == ord('e'):
             agent_info["theta"] -= np.pi/18
             render_frame = True
     print()
