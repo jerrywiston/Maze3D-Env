@@ -124,7 +124,7 @@ def gen_scene(w=11, h=11, room_max=(5,5), prob=0.5):
     # Pyrender
     mesh_floor_pr, mesh_wall_pr = gen_maze_mesh(maze)
     mesh_obj_pr = gen_obj_mesh(maze)
-    amb_intensity = 0.15#0.5
+    amb_intensity = 0.2#0.5
     bg_color = np.array([160,200,255,0])
     scene = pyrender.Scene(ambient_light=amb_intensity*np.ones(3), bg_color=bg_color)
     scene.add(mesh_floor_pr)
@@ -201,6 +201,7 @@ if __name__ == "__main__":
     ############### Off-Screen Render ###############
     import time
     render_frame = True
+    render_res = (256, 256)
     while(True):
         print("\r", agent_info['x'], agent_info['y'], agent_info['theta']*180/np.pi, end="")
         maze_re = cv2.cvtColor(maze, cv2.COLOR_GRAY2RGB)
@@ -223,7 +224,7 @@ if __name__ == "__main__":
 
         if render_frame:
             start = time.time()
-            r = pyrender.OffscreenRenderer(256,256)
+            r = pyrender.OffscreenRenderer(render_res[0],render_res[1])
             flags = pyrender.RenderFlags.SKIP_CULL_FACES | pyrender.RenderFlags.SHADOWS_DIRECTIONAL#| pyrender.RenderFlags.SHADOWS_ALL
             color, depth = r.render(scene, flags)
             end = time.time()
