@@ -118,6 +118,46 @@ def gen_obj_mesh(maze, gen_prob=0.2):
     mesh_obj = trimesh.Trimesh(vertices=struct_obj['v'], faces=struct_obj['f'], visual=color_visuals_obj)
     mesh_obj_pr = pyrender.Mesh.from_trimesh(mesh_obj)
     return mesh_obj_pr
+
+def gen_obj_node(maze, gen_prob=0.2):
+    path_obj = './resource/texture/obj'
+    flist_obj = os.listdir(path_obj)
+    path_mesh = './resource/mesh'
+    flist_mesh = os.listdir(path_mesh)
+    num_obj = 0
+    obj_list = []
+    for j in range(1,maze.shape[0]-1):
+        for i in range(1,maze.shape[1]-1):
+            # Check in the room
+            if 0 < maze[j,i] < 255 and np.random.rand() < gen_prob:
+                struct_obj = {'v':[], 'vn':[], 'f':[], 'vt':[], 'foff':0}
+                mesh_id = np.random.randint(len(flist_mesh))
+                color_id = np.random.randint(len(flist_obj))
+                scale = np.random.uniform(0.2,0.6)
+                v, vn, f, vt, foff = obj_loader.load_(os.path.join(path_mesh, flist_mesh[mesh_id]), \
+                            (0,0,0), struct_obj['foff'], scale, len(flist_obj), color_id)
+                struct_obj = add_struct(v, vn, f, vt, foff, struct_obj)
+                
+                rot = np.random.uniform(0,np.pi)
+                r = glm.mat4_cast(glm.quat(glm.vec3(0,0,rot)))
+                t = glm.translate(glm.mat4(1), glm.vec3(i+0.5,j+0.5,scale*0.5))
+                m = r * glm.transpose(t)
+                m = np.array(m)
+                
+                image_obj = read_texture(path_obj, flist_obj, 256)
+                material_obj = trimesh.visual.texture.SimpleMaterial(image=image_obj)
+                color_visuals_obj = trimesh.visual.TextureVisuals(uv=struct_obj['vt'], image=image_obj, material=material_obj)
+                mesh_obj = trimesh.Trimesh(vertices=struct_obj['v'], faces=struct_obj['f'], visual=color_visuals_obj)
+                mesh_obj_pr = pyrender.Mesh.from_trimesh(mesh_obj)
+
+                obj = pyrender.Node(mesh=mesh_obj_pr, matrix=m)
+                obj_list.append(obj)
+                num_obj += 1
+    print(num_obj)
+    if num_obj == 0:
+        return None
+    obj_node = pyrender.Node(children=obj_list)
+    return obj_node
     
 def gen_scene(size=(11,11), room_max=(5,5), prob=0.8):
     # Initialize Scene
@@ -130,9 +170,12 @@ def gen_scene(size=(11,11), room_max=(5,5), prob=0.8):
     scene.add(mesh_floor_pr)
     scene.add(mesh_wall_pr)
     # Generate Object
-    mesh_obj_pr = gen_obj_mesh(maze)
-    if mesh_obj_pr is not None:
-        scene.add(mesh_obj_pr)
+    #mesh_obj_pr = gen_obj_mesh(maze)
+    #if mesh_obj_pr is not None:
+    #    scene.add(mesh_obj_pr)
+    obj_node = gen_obj_node(maze)
+    if obj_node is not None:
+        scene.add_node(obj_node)
     # Add Light 
     dir_light = pyrender.DirectionalLight(color=np.ones(3), intensity=6)
     m = glm.mat4_cast(glm.quat(glm.vec3(0.5,0.4,np.pi/2)))
@@ -141,9 +184,57 @@ def gen_scene(size=(11,11), room_max=(5,5), prob=0.8):
 
     return scene, maze
 
+def get_cam_pose(x, y, th):
+    r = glm.mat4_cast(glm.quat(glm.vec3(-np.pi/2,np.pi/2-th,0)))
+    t = glm.translate(glm.mat4(1), glm.vec3(x,y,0.5))
+    m = r * glm.transpose(t)
+    m = np.array(m)
+    return m
+
 #############################################
-def run_collect_data(observation=8):
-    pass
+def run_dataset(scene, maze, view_size=4., gen_size=16, render=False):
+    images = []
+    depths = []
+    poses = []
+
+    # Set Camera 
+    camera = pyrender.PerspectiveCamera(yfov=np.pi/3.0, aspectRatio=1.0)
+    camera_node = pyrender.Node(camera=camera)
+    scene.add_node(camera_node)
+
+    flags = pyrender.RenderFlags.SKIP_CULL_FACES | pyrender.RenderFlags.SHADOWS_DIRECTIONAL
+    render_res = (192, 192)
+    map_scale = 16
+    rend = pyrender.OffscreenRenderer(render_res[0],render_res[1])
+    count = 0
+    x_min = np.random.uniform(0,float(maze.shape[1]-view_size))
+    y_min = np.random.uniform(0,float(maze.shape[0]-view_size))
+    print(x_min, y_min)
+    while True:
+        x = np.random.uniform(x_min, x_min + view_size)
+        y = np.random.uniform(y_min, y_min + view_size)
+        th = np.random.uniform(0,np.pi)
+        if maze[int(y),int(x)] != 255:
+            r = glm.mat4_cast(glm.quat(glm.vec3(-np.pi/2,np.pi/2-th,0)))
+            t = glm.translate(glm.mat4(1), glm.vec3(x,y,0.5))
+            m = r * glm.transpose(t)
+            m = np.array(m)
+            scene.set_pose(camera_node, m)
+            color, depth = rend.render(scene, flags)
+            color = cv2.cvtColor(color, cv2.COLOR_BGR2RGB)
+
+            images.append(color)
+            depths.append(depth)
+            poses.append(np.array([x, y, th]))
+
+            if render:
+                print("\rx={:.3f}, y={:.3f}, th={:.3f}\t".format(x, y, th*180/np.pi), end="")
+                cv2.imshow("color", color)
+                cv2.waitKey(0)
+            count += 1
+        if count >= gen_size:
+            break
+    return images, depths, poses
 
 def run_viewer(scene):
     render_flags = { \
@@ -157,7 +248,7 @@ def run_viewer(scene):
     }
     pyrender.Viewer(scene, render_flags=render_flags, use_raymond_lighting=False)
 
-def run_control(scene):
+def run_control(scene, maze):
     # Set Camera 
     agent_info = {"x":1.5, "y":1.5, "theta":0}
     camera = pyrender.PerspectiveCamera(yfov=np.pi/3.0, aspectRatio=1.0)
@@ -167,10 +258,12 @@ def run_control(scene):
     # Off-Screen Render
     render_frame = True
     render_res = (192, 192)
+    map_scale = 16
+    flags = pyrender.RenderFlags.SKIP_CULL_FACES | pyrender.RenderFlags.SHADOWS_DIRECTIONAL#| pyrender.RenderFlags.SHADOWS_ALL
+    rend = pyrender.OffscreenRenderer(render_res[0],render_res[1])
     while(True):
         # Draw Maze Map
         maze_re = cv2.cvtColor(maze, cv2.COLOR_GRAY2RGB)
-        map_scale = 16
         maze_re = 255-cv2.resize(maze_re, (maze.shape[1]*map_scale, maze.shape[0]*map_scale), interpolation=cv2.INTER_NEAREST)
         maze_draw = maze_re.copy()
         
@@ -185,22 +278,18 @@ def run_control(scene):
         cv2.imshow("maze", maze_draw)
 
         # Render Agent View
-        r = glm.mat4_cast(glm.quat(glm.vec3(-np.pi/2,np.pi/2-agent_info['theta'],0)))
-        t = glm.translate(glm.mat4(1), glm.vec3(agent_info['x'],agent_info['y'],0.5))
-        m = r * glm.transpose(t)
-        m = np.array(m)
+        m = get_cam_pose(agent_info['x'], agent_info['y'], agent_info['theta'])
         scene.set_pose(camera_node, m)
 
         if render_frame:
             start = time.time()
-            r = pyrender.OffscreenRenderer(render_res[0],render_res[1])
-            flags = pyrender.RenderFlags.SKIP_CULL_FACES | pyrender.RenderFlags.SHADOWS_DIRECTIONAL#| pyrender.RenderFlags.SHADOWS_ALL
-            color, depth = r.render(scene, flags)
+            color, depth = rend.render(scene, flags)
             end = time.time()
             print("\rx={:.3f}, y={:.3f}, th={:.3f}, time={:.3f}\t"\
                 .format(agent_info['x'], agent_info['y'], agent_info['theta']*180/np.pi, end - start), end="")
             color = cv2.cvtColor(color, cv2.COLOR_BGR2RGB)
             cv2.imshow("camera", color)
+            cv2.imshow("depth", depth/5)
             render_frame = False
 
         # Control Handling
@@ -234,5 +323,10 @@ def run_control(scene):
 if __name__ == "__main__":
     scene, maze = gen_scene((11,11), room_max=(5,5), prob=0.8)
     #run_viewer(scene)
-    run_control(scene)
+    #run_control(scene, maze)
+    images, depths, poses = run_dataset(scene, maze)
+    for i, img in enumerate(images):
+        print(poses[i])
+        cv2.imshow("img", img)
+        cv2.waitKey(0)
     
