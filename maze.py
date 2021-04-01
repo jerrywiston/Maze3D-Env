@@ -94,7 +94,7 @@ def gen_obj_mesh(maze, gen_prob=0.2):
     path_mesh = './resource/mesh'
     flist_mesh = os.listdir(path_mesh)
     struct_obj = {'v':[], 'vn':[], 'f':[], 'vt':[], 'foff':0}
-    has_obj = False
+    num_obj = 0
     for j in range(1,maze.shape[0]-1):
         for i in range(1,maze.shape[1]-1):
             # Check in the room
@@ -105,9 +105,9 @@ def gen_obj_mesh(maze, gen_prob=0.2):
                 v, vn, f, vt, foff = obj_loader.load_(os.path.join(path_mesh, flist_mesh[mesh_id]), \
                             (i+0.5,j+0.5,0.5), struct_obj['foff'], scale, len(flist_obj), color_id)
                 struct_obj = add_struct(v, vn, f, vt, foff, struct_obj)
-                has_obj = True
-    print(len(struct_obj['v']), struct_obj['foff'])
-    if not has_obj:
+                num_obj += 1
+    print(num_obj)
+    if num_obj == 0:
         return None
     
     image_obj = read_texture(path_obj, flist_obj, 256)
@@ -118,7 +118,7 @@ def gen_obj_mesh(maze, gen_prob=0.2):
     mesh_obj_pr = pyrender.Mesh.from_trimesh(mesh_obj)
     return mesh_obj_pr
     
-def gen_scene(w=11, h=11, room_max=(5,5), prob=0.5):
+def gen_scene(w=11, h=11, room_max=(5,5), prob=0.8):
     # Generate Maze
     maze = maze_gen.gen_maze(11,11,room_max,prob)
     # Pyrender
@@ -134,7 +134,7 @@ def gen_scene(w=11, h=11, room_max=(5,5), prob=0.5):
     return scene, maze
 
 if __name__ == "__main__":
-    scene, maze = gen_scene(w=11, h=11, room_max=(5,5), prob=0.5)
+    scene, maze = gen_scene(w=11, h=11, room_max=(5,5), prob=0.8)
 
     ############### Camera ###############
     #agent_info = {"x":5, "y":5, "theta":0}
@@ -172,7 +172,6 @@ if __name__ == "__main__":
     render_res = (256, 256)
     while(True):
         # Draw Maze Map
-        print("\r", agent_info['x'], agent_info['y'], agent_info['theta']*180/np.pi, end="")
         maze_re = cv2.cvtColor(maze, cv2.COLOR_GRAY2RGB)
         map_scale = 16
         maze_re = 255-cv2.resize(maze_re, (maze.shape[1]*map_scale, maze.shape[0]*map_scale), interpolation=cv2.INTER_NEAREST)
@@ -201,7 +200,8 @@ if __name__ == "__main__":
             flags = pyrender.RenderFlags.SKIP_CULL_FACES | pyrender.RenderFlags.SHADOWS_DIRECTIONAL#| pyrender.RenderFlags.SHADOWS_ALL
             color, depth = r.render(scene, flags)
             end = time.time()
-            print(" Time ", end - start)
+            print("\rx={:.3f}, y={:.3f}, th={:.3f}, time={:.3f}\t"\
+                .format(agent_info['x'], agent_info['y'], agent_info['theta']*180/np.pi, end - start), end="")
             color = cv2.cvtColor(color, cv2.COLOR_BGR2RGB)
             cv2.imshow("camera", color)
             render_frame = False
