@@ -191,6 +191,21 @@ def get_cam_pose(x, y, th):
     m = np.array(m)
     return m
 
+def get_map(x, y, th, maze, map_scale=16):
+    maze_re = cv2.cvtColor(maze, cv2.COLOR_GRAY2RGB)
+    maze_re = 255-cv2.resize(maze_re, (maze.shape[1]*map_scale, maze.shape[0]*map_scale), interpolation=cv2.INTER_NEAREST)
+    maze_draw = maze_re.copy()
+        
+    temp_y = int(y*map_scale)
+    temp_x = int(x*map_scale)
+    cv2.circle(maze_draw, (temp_x, temp_y), 4, (255,0,0), 3)
+    temp_y2 = int((y + 0.4*np.sin(th)) * map_scale)
+    temp_x2 = int((x + 0.4*np.cos(th)) * map_scale)
+    cv2.line(maze_draw, (temp_x, temp_y), (temp_x2, temp_y2), (0,0,255), 3)
+    maze_draw = cv2.flip(maze_draw,0)
+
+    return maze_draw
+
 #############################################
 def run_dataset(scene, maze, view_size=4., gen_size=16, render=False):
     images = []
@@ -204,7 +219,6 @@ def run_dataset(scene, maze, view_size=4., gen_size=16, render=False):
 
     flags = pyrender.RenderFlags.SKIP_CULL_FACES | pyrender.RenderFlags.SHADOWS_DIRECTIONAL
     render_res = (192, 192)
-    map_scale = 16
     rend = pyrender.OffscreenRenderer(render_res[0],render_res[1])
     count = 0
     x_min = np.random.uniform(0,float(maze.shape[1]-view_size))
@@ -229,6 +243,8 @@ def run_dataset(scene, maze, view_size=4., gen_size=16, render=False):
 
             if render:
                 print("\rx={:.3f}, y={:.3f}, th={:.3f}\t".format(x, y, th*180/np.pi), end="")
+                maze_draw = get_map(x, y, th, maze)
+                cv2.imshow("maze", maze_draw)
                 cv2.imshow("color", color)
                 cv2.waitKey(0)
             count += 1
@@ -258,23 +274,11 @@ def run_control(scene, maze):
     # Off-Screen Render
     render_frame = True
     render_res = (192, 192)
-    map_scale = 16
     flags = pyrender.RenderFlags.SKIP_CULL_FACES | pyrender.RenderFlags.SHADOWS_DIRECTIONAL#| pyrender.RenderFlags.SHADOWS_ALL
     rend = pyrender.OffscreenRenderer(render_res[0],render_res[1])
     while(True):
         # Draw Maze Map
-        maze_re = cv2.cvtColor(maze, cv2.COLOR_GRAY2RGB)
-        maze_re = 255-cv2.resize(maze_re, (maze.shape[1]*map_scale, maze.shape[0]*map_scale), interpolation=cv2.INTER_NEAREST)
-        maze_draw = maze_re.copy()
-        
-        temp_y = int((agent_info['y'])*map_scale)
-        temp_x = int((agent_info['x'])*map_scale)
-        cv2.circle(maze_draw, (temp_x, temp_y), 4, (255,0,0), 3)
-        temp_y2 = int((agent_info["y"] + 0.4*np.sin(agent_info["theta"])) * map_scale)
-        temp_x2 = int((agent_info["x"] + 0.4*np.cos(agent_info["theta"])) * map_scale)
-        cv2.line(maze_draw, (temp_x, temp_y), (temp_x2, temp_y2), (0,0,255), 3)
-        
-        maze_draw = cv2.flip(maze_draw,0)
+        maze_draw = get_map(agent_info["x"], agent_info["y"], agent_info["theta"], maze)
         cv2.imshow("maze", maze_draw)
 
         # Render Agent View
@@ -323,10 +327,6 @@ def run_control(scene, maze):
 if __name__ == "__main__":
     scene, maze = gen_scene((11,11), room_max=(5,5), prob=0.8)
     #run_viewer(scene)
-    #run_control(scene, maze)
-    images, depths, poses = run_dataset(scene, maze)
-    for i, img in enumerate(images):
-        print(poses[i])
-        cv2.imshow("img", img)
-        cv2.waitKey(0)
+    #run_control(scene, maze) 
+    images, depths, poses = run_dataset(scene, maze, render=True)
     
