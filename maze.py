@@ -2,6 +2,7 @@
 # Multiple textures, solve the sampling problem.
 ##############################################
 import os
+import time
 import random
 import trimesh
 import pyrender
@@ -118,9 +119,9 @@ def gen_obj_mesh(maze, gen_prob=0.2):
     mesh_obj_pr = pyrender.Mesh.from_trimesh(mesh_obj)
     return mesh_obj_pr
     
-def gen_scene(w=11, h=11, room_max=(5,5), prob=0.8):
+def gen_scene(size=(11,11), room_max=(5,5), prob=0.8):
     # Generate Maze
-    maze = maze_gen.gen_maze(11,11,room_max,prob)
+    maze = maze_gen.gen_maze(size[0],size[1],room_max,prob)
     # Pyrender
     mesh_floor_pr, mesh_wall_pr = gen_maze_mesh(maze)
     mesh_obj_pr = gen_obj_mesh(maze)
@@ -134,7 +135,8 @@ def gen_scene(w=11, h=11, room_max=(5,5), prob=0.8):
     return scene, maze
 
 if __name__ == "__main__":
-    scene, maze = gen_scene(w=11, h=11, room_max=(5,5), prob=0.8)
+    ############### Get Scene ###############
+    scene, maze = gen_scene((11,11), room_max=(5,5), prob=0.8) # Medium
 
     ############### Camera ###############
     #agent_info = {"x":5, "y":5, "theta":0}
@@ -167,9 +169,8 @@ if __name__ == "__main__":
         pyrender.Viewer(scene, render_flags=render_flags, use_raymond_lighting=False)
     
     ############### Off-Screen Render ###############
-    import time
     render_frame = True
-    render_res = (256, 256)
+    render_res = (128,128)#(256, 256)
     while(True):
         # Draw Maze Map
         maze_re = cv2.cvtColor(maze, cv2.COLOR_GRAY2RGB)
