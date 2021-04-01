@@ -120,42 +120,32 @@ def gen_obj_mesh(maze, gen_prob=0.2):
     return mesh_obj_pr
     
 def gen_scene(size=(11,11), room_max=(5,5), prob=0.8):
-    # Generate Maze
-    maze = maze_gen.gen_maze(size[0],size[1],room_max,prob)
-    # Pyrender
-    mesh_floor_pr, mesh_wall_pr = gen_maze_mesh(maze)
-    mesh_obj_pr = gen_obj_mesh(maze)
+    # Initialize Scene
     amb_intensity = 0.2
     bg_color = np.array([160,200,255,0])
     scene = pyrender.Scene(ambient_light=amb_intensity*np.ones(3), bg_color=bg_color)
+    # Generate Maze 
+    maze = maze_gen.gen_maze(size[0],size[1],room_max,prob)
+    mesh_floor_pr, mesh_wall_pr = gen_maze_mesh(maze)
     scene.add(mesh_floor_pr)
     scene.add(mesh_wall_pr)
+    # Generate Object
+    mesh_obj_pr = gen_obj_mesh(maze)
     if mesh_obj_pr is not None:
         scene.add(mesh_obj_pr)
-    return scene, maze
-
-if __name__ == "__main__":
-    ############### Get Scene ###############
-    scene, maze = gen_scene((11,11), room_max=(5,5), prob=0.8) # Medium
-
-    ############### Camera ###############
-    #agent_info = {"x":5, "y":5, "theta":0}
-    agent_info = {"x":1, "y":1, "theta":0}
-    camera = pyrender.PerspectiveCamera(yfov=np.pi/3.0, aspectRatio=1.0)
-    r = glm.mat4_cast(glm.quat(glm.vec3(-np.pi/2,np.pi/2-agent_info['theta'],0)))
-    t = glm.translate(glm.mat4(1), glm.vec3(agent_info['x']+0.5,agent_info['y']+0.5,0.5))
-    m = r * glm.transpose(t)
-    camera_node = pyrender.Node(camera=camera, matrix=m)
-    scene.add_node(camera_node)
-
-    ############### Light ###############
+    # Add Light 
     dir_light = pyrender.DirectionalLight(color=np.ones(3), intensity=6)
     m = glm.mat4_cast(glm.quat(glm.vec3(0.5,0.4,np.pi/2)))
     light_node = pyrender.Node(light=dir_light, matrix=m)
     scene.add_node(light_node)
 
-    ############### Viewer ###############
-    USE_VIEWER = False
+    return scene, maze
+
+#############################################
+def run_collect_data(observation=8):
+    pass
+
+def run_viewer(scene):
     render_flags = { \
         "flip_wireframe":False, #default:False
         "all_wireframe":False,  #default:False
@@ -165,12 +155,18 @@ if __name__ == "__main__":
         "cull_faces":False,     #default:True
         "point_size":1,         #default:1
     }
-    if USE_VIEWER:
-        pyrender.Viewer(scene, render_flags=render_flags, use_raymond_lighting=False)
-    
-    ############### Off-Screen Render ###############
+    pyrender.Viewer(scene, render_flags=render_flags, use_raymond_lighting=False)
+
+def run_control(scene):
+    # Set Camera 
+    agent_info = {"x":1.5, "y":1.5, "theta":0}
+    camera = pyrender.PerspectiveCamera(yfov=np.pi/3.0, aspectRatio=1.0)
+    camera_node = pyrender.Node(camera=camera)
+    scene.add_node(camera_node)
+
+    # Off-Screen Render
     render_frame = True
-    render_res = (128,128)#(256, 256)
+    render_res = (192, 192)
     while(True):
         # Draw Maze Map
         maze_re = cv2.cvtColor(maze, cv2.COLOR_GRAY2RGB)
@@ -178,11 +174,11 @@ if __name__ == "__main__":
         maze_re = 255-cv2.resize(maze_re, (maze.shape[1]*map_scale, maze.shape[0]*map_scale), interpolation=cv2.INTER_NEAREST)
         maze_draw = maze_re.copy()
         
-        temp_y = int((agent_info['y']+0.5)*map_scale)
-        temp_x = int((agent_info['x']+0.5)*map_scale)
+        temp_y = int((agent_info['y'])*map_scale)
+        temp_x = int((agent_info['x'])*map_scale)
         cv2.circle(maze_draw, (temp_x, temp_y), 4, (255,0,0), 3)
-        temp_y2 = int((agent_info["y"] + 0.5 + 0.4*np.sin(agent_info["theta"])) * map_scale)
-        temp_x2 = int((agent_info["x"] + 0.5 + 0.4*np.cos(agent_info["theta"])) * map_scale)
+        temp_y2 = int((agent_info["y"] + 0.4*np.sin(agent_info["theta"])) * map_scale)
+        temp_x2 = int((agent_info["x"] + 0.4*np.cos(agent_info["theta"])) * map_scale)
         cv2.line(maze_draw, (temp_x, temp_y), (temp_x2, temp_y2), (0,0,255), 3)
         
         maze_draw = cv2.flip(maze_draw,0)
@@ -190,7 +186,7 @@ if __name__ == "__main__":
 
         # Render Agent View
         r = glm.mat4_cast(glm.quat(glm.vec3(-np.pi/2,np.pi/2-agent_info['theta'],0)))
-        t = glm.translate(glm.mat4(1), glm.vec3(agent_info['x']+0.5,agent_info['y']+0.5,0.5))
+        t = glm.translate(glm.mat4(1), glm.vec3(agent_info['x'],agent_info['y'],0.5))
         m = r * glm.transpose(t)
         m = np.array(m)
         scene.set_pose(camera_node, m)
@@ -234,3 +230,9 @@ if __name__ == "__main__":
             agent_info["theta"] -= np.pi/18
             render_frame = True
     print()
+
+if __name__ == "__main__":
+    scene, maze = gen_scene((11,11), room_max=(5,5), prob=0.8)
+    #run_viewer(scene)
+    run_control(scene)
+    
