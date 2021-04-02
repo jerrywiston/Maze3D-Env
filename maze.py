@@ -107,7 +107,7 @@ def gen_obj_mesh(maze, gen_prob=0.2):
                             (i+0.5,j+0.5,0.5), struct_obj['foff'], scale, len(flist_obj), color_id)
                 struct_obj = add_struct(v, vn, f, vt, foff, struct_obj)
                 num_obj += 1
-    print(num_obj)
+    #print(num_obj)
     if num_obj == 0:
         return None
     
@@ -138,7 +138,7 @@ def gen_obj_node(maze, gen_prob=0.2):
                             (0,0,0), struct_obj['foff'], scale, len(flist_obj), color_id)
                 struct_obj = add_struct(v, vn, f, vt, foff, struct_obj)
                 
-                rot = np.random.uniform(0,np.pi)
+                rot = np.random.uniform(0,np.pi*2)
                 r = glm.mat4_cast(glm.quat(glm.vec3(0,0,rot)))
                 t = glm.translate(glm.mat4(1), glm.vec3(i+0.5,j+0.5,scale*0.5))
                 m = r * glm.transpose(t)
@@ -153,7 +153,7 @@ def gen_obj_node(maze, gen_prob=0.2):
                 obj = pyrender.Node(mesh=mesh_obj_pr, matrix=m)
                 obj_list.append(obj)
                 num_obj += 1
-    print(num_obj)
+    #print(num_obj)
     if num_obj == 0:
         return None
     obj_node = pyrender.Node(children=obj_list)
@@ -164,18 +164,21 @@ def gen_scene(size=(11,11), room_max=(5,5), prob=0.8):
     amb_intensity = 0.2
     bg_color = np.array([160,200,255,0])
     scene = pyrender.Scene(ambient_light=amb_intensity*np.ones(3), bg_color=bg_color)
+    
     # Generate Maze 
     maze = maze_gen.gen_maze(size[0],size[1],room_max,prob)
     mesh_floor_pr, mesh_wall_pr = gen_maze_mesh(maze)
     scene.add(mesh_floor_pr)
     scene.add(mesh_wall_pr)
+    
     # Generate Object
-    #mesh_obj_pr = gen_obj_mesh(maze)
-    #if mesh_obj_pr is not None:
-    #    scene.add(mesh_obj_pr)
-    obj_node = gen_obj_node(maze)
-    if obj_node is not None:
-        scene.add_node(obj_node)
+    mesh_obj_pr = gen_obj_mesh(maze)
+    if mesh_obj_pr is not None:
+        scene.add(mesh_obj_pr)
+    #obj_node = gen_obj_node(maze)
+    #if obj_node is not None:
+    #    scene.add_node(obj_node)
+    
     # Add Light 
     dir_light = pyrender.DirectionalLight(color=np.ones(3), intensity=6)
     m = glm.mat4_cast(glm.quat(glm.vec3(0.5,0.4,np.pi/2)))
@@ -223,11 +226,11 @@ def run_dataset(scene, maze, view_size=4., gen_size=16, render=False):
     count = 0
     x_min = np.random.uniform(0,float(maze.shape[1]-view_size))
     y_min = np.random.uniform(0,float(maze.shape[0]-view_size))
-    print(x_min, y_min)
+    #print(x_min, y_min)
     while True:
         x = np.random.uniform(x_min, x_min + view_size)
         y = np.random.uniform(y_min, y_min + view_size)
-        th = np.random.uniform(0,np.pi)
+        th = np.random.uniform(0,np.pi*2)
         if maze[int(y),int(x)] != 255:
             r = glm.mat4_cast(glm.quat(glm.vec3(-np.pi/2,np.pi/2-th,0)))
             t = glm.translate(glm.mat4(1), glm.vec3(x,y,0.5))
@@ -237,9 +240,9 @@ def run_dataset(scene, maze, view_size=4., gen_size=16, render=False):
             color, depth = rend.render(scene, flags)
             color = cv2.cvtColor(color, cv2.COLOR_BGR2RGB)
 
-            images.append(color)
-            depths.append(depth)
-            poses.append(np.array([x, y, th]))
+            images.append(color[np.newaxis,...])
+            depths.append(depth[np.newaxis,...])
+            poses.append(np.array([1, x, y, th]))
 
             if render:
                 print("\rx={:.3f}, y={:.3f}, th={:.3f}\t".format(x, y, th*180/np.pi), end="")
@@ -250,6 +253,10 @@ def run_dataset(scene, maze, view_size=4., gen_size=16, render=False):
             count += 1
         if count >= gen_size:
             break
+    
+    images = np.concatenate(images, 0)
+    depths = np.concatenate(depths, 0)
+    poses = np.concatenate(poses, 0)
     return images, depths, poses
 
 def run_viewer(scene):
@@ -325,8 +332,32 @@ def run_control(scene, maze):
     print()
 
 if __name__ == "__main__":
-    scene, maze = gen_scene((11,11), room_max=(5,5), prob=0.8)
+    #scene, maze = gen_scene((11,11), room_max=(5,5), prob=0.8)
     #run_viewer(scene)
     #run_control(scene, maze) 
-    images, depths, poses = run_dataset(scene, maze, render=True)
+    #images, depths, poses = run_dataset(scene, maze, render=True)
+
+    image_data = []
+    depth_data = []
+    pose_data = []
+    maze_data = []
+    for i in range(100000):
+        print(i)
+        scene, maze = gen_scene((5,5), room_max=(5,5), prob=0.8)
+        images, depths, poses = run_dataset(scene, maze, render=False)
+        image_data.append(images[np.newaxis,...])
+        depth_data.append(depths[np.newaxis,...])
+        pose_data.append(poses[np.newaxis,...])
+        maze_data.append(maze[np.newaxis,...])
     
+    image_data = np.concatenate(image_data, 0)
+    depth_data = np.concatenate(depth_data, 0)
+    pose_data = np.concatenate(pose_data, 0)
+    maze_data = np.concatenate(maze_data, 0)
+    
+    np.savez("maze.npz", 
+        image = image_data, 
+        depth = depth_data,
+        pose = pose_data,
+        maze = maze_data,
+    )
