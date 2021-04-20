@@ -42,8 +42,8 @@ class MazeGrid(Maze):
                     # Build Wall Right
                     if self.maze[j,i+1]==255:
                         wall_list.append({"voff":(i,j), "id":self.maze[j,i], "type":"R"})
-                    # Build Object
-
+                
+                # Build Object
                 if 0 < self.maze[j,i] < 255 and np.random.rand() < obj_prob:
                     obj_list.append({"voff":(i+0.5,j+0.5,0.5)})
 
@@ -113,10 +113,10 @@ class MazeBoard(Maze):
             for i in range(self.maze.shape[1]):
                 floor_list.append({"voff":(i,j), "id":0})
                 # Build Wall Buttom
-                if self.maze[j,i,2]==1:
+                if self.maze[j,i,0]==1:
                     wall_list.append({"voff":(i,j), "id":0, "type":"B"})
                 # Build Wall Top
-                if self.maze[j,i,0]==1:
+                if self.maze[j,i,2]==1:
                     wall_list.append({"voff":(i,j), "id":0, "type":"T"})
                 # Build Wall Left
                 if self.maze[j,i,1]==1:
@@ -127,14 +127,14 @@ class MazeBoard(Maze):
 
         return floor_list, wall_list, obj_list
     
-    def get_map(self, agent_info, map_scale=16, wall_rate=0.4):
+    def get_map(self, agent_info, map_scale=16, wall_rate=0.4, flip=True):
         maze_draw  = 255*np.ones((self.maze.shape[0]*map_scale, self.maze.shape[1]*map_scale, 3), dtype=np.uint8)
         
         # Draw Wall
         wall_size = int(map_scale*wall_rate)
         for j in range(self.maze.shape[0]):
             for i in range(self.maze.shape[1]):
-                if self.maze[j,i,0] == 1:
+                if self.maze[j,i,2] == 1:
                     x1 = (i)*map_scale
                     y1 = (j+1)*map_scale
                     x2 = (i+1)*map_scale
@@ -146,7 +146,7 @@ class MazeBoard(Maze):
                     x2 = (i)*map_scale
                     y2 = (j+1)*map_scale
                     cv2.line(maze_draw, (x1, y1), (x2, y2), (0,0,0), wall_size)
-                if self.maze[j,i,2] == 1:
+                if self.maze[j,i,0] == 1:
                     x1 = (i)*map_scale
                     y1 = (j)*map_scale
                     x2 = (i+1)*map_scale
@@ -168,14 +168,15 @@ class MazeBoard(Maze):
             temp_y2 = int((y + 0.4*np.sin(th)) * map_scale)
             temp_x2 = int((x + 0.4*np.cos(th)) * map_scale)
             cv2.line(maze_draw, (temp_x, temp_y), (temp_x2, temp_y2), (0,0,255), 3)
-        maze_draw = cv2.flip(maze_draw,0)
+        if flip:
+            maze_draw = cv2.flip(maze_draw,0)
         return maze_draw
     
     def collision_detect(self, agent_info):
         map_scale = 16
         wall_rate = 0.4
         if not hasattr(self, 'collision_map'):
-            self.collision_map = self.get_map(None, map_scale, wall_rate)
+            self.collision_map = self.get_map(None, map_scale, wall_rate, flip=False)
         if self.collision_map[int(agent_info["y"]*map_scale), int(agent_info["x"]*map_scale), 0] == 0:
             return True
         else:
@@ -189,7 +190,17 @@ class MazeBoardRoom(MazeBoard):
         self.maze[room_size[0]-1,:,0] = 1
         self.maze[:,0,1] = 1
         self.maze[:,room_size[1]-1,3] = 1
-        
+
+class MazeBoardRandom(MazeBoard):
+    def generate(self, size=(30,30)):
+        import maze_gen_board
+        M = maze_gen_board.Maze(size[0], size[1])
+        M.dfs(10, 10)
+        M.imperfect2()
+        M.imperfect1()
+        #M.render()
+        self.maze = np.array(M.cell, dtype=np.uint8)
+
 if __name__ == "__main__":
     maze_obj = MazeBoardRoom()
     maze_obj.generate()

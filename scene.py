@@ -79,7 +79,7 @@ def gen_mesh(floor_list, wall_list, obj_list):
     material_floor = trimesh.visual.texture.SimpleMaterial(image=image_floor)
     color_visuals_floor = trimesh.visual.TextureVisuals(uv=struct_floor['vt'], image=image_floor, material=material_floor)
     # Mesh Floor
-    mesh_floor = trimesh.Trimesh(vertices=struct_floor['v'], faces=struct_floor['f'], visual=color_visuals_floor)
+    mesh_floor = trimesh.Trimesh(vertices=struct_floor['v'], vertex_normals=struct_floor['vn'], faces=struct_floor['f'], visual=color_visuals_floor)
     mesh_floor_pr = pyrender.Mesh.from_trimesh(mesh_floor)
     
     # Texture Wall
@@ -87,7 +87,7 @@ def gen_mesh(floor_list, wall_list, obj_list):
     material_wall = trimesh.visual.texture.SimpleMaterial(image=image_wall)
     color_visuals_wall = trimesh.visual.TextureVisuals(uv=struct_wall['vt'], image=image_wall, material=material_wall)
     # Mesh Wall
-    mesh_wall = trimesh.Trimesh(vertices=struct_wall['v'], faces=struct_wall['f'], visual=color_visuals_wall)
+    mesh_wall = trimesh.Trimesh(vertices=struct_wall['v'], vertex_normals=struct_wall['vn'], faces=struct_wall['f'], visual=color_visuals_wall)
     mesh_wall_pr = pyrender.Mesh.from_trimesh(mesh_wall)
     
     if len(obj_list) > 0:
@@ -120,6 +120,7 @@ def gen_scene(maze):
     # Add Light 
     dir_light = pyrender.DirectionalLight(color=np.ones(3), intensity=6)
     m = glm.mat4_cast(glm.quat(glm.vec3(0.5,0.4,np.pi/2)))
+    #m = glm.mat4_cast(glm.quat(glm.vec3(0.8,0,np.pi/2)))
     light_node = pyrender.Node(light=dir_light, matrix=m)
     scene.add_node(light_node)
 
@@ -188,7 +189,7 @@ def run_viewer(scene):
         "all_solid":False,      #default:False
         "shadows":True,         #default:False
         "face_normals":False,   #default:False
-        "cull_faces":False,     #default:True
+        "cull_faces":True,     #default:True
         "point_size":1,         #default:1
     }
     pyrender.Viewer(scene, render_flags=render_flags, use_raymond_lighting=False)
@@ -203,8 +204,8 @@ def run_control(scene, maze):
     # Off-Screen Render
     render_frame = True
     render_res = (192, 192)
-    #flags = pyrender.RenderFlags.SKIP_CULL_FACES | pyrender.RenderFlags.SHADOWS_DIRECTIONAL#| pyrender.RenderFlags.SHADOWS_ALL
-    flags = pyrender.RenderFlags.SHADOWS_DIRECTIONAL
+    flags = pyrender.RenderFlags.SKIP_CULL_FACES | pyrender.RenderFlags.SHADOWS_DIRECTIONAL#| pyrender.RenderFlags.SHADOWS_ALL
+    #flags = pyrender.RenderFlags.SHADOWS_DIRECTIONAL
     rend = pyrender.OffscreenRenderer(render_res[0],render_res[1])
     while(True):
         # Control Handling
@@ -267,7 +268,8 @@ if __name__ == "__main__":
     #maze_obj = maze.MazeGridRoom()
     #maze_obj = maze.MazeGridRandom()
     #maze_obj = maze.MazeGridDungeon()
-    maze_obj = maze.MazeBoardRoom()
+    #maze_obj = maze.MazeBoardRoom()
+    maze_obj = maze.MazeBoardRandom()
 
     maze_obj.generate()
     scene = gen_scene(maze_obj)
