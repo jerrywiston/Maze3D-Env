@@ -263,8 +263,10 @@ def run_control(scene, maze):
 
 if __name__ == "__main__":
     import maze
-    maze_obj = maze.MazeRoom()
-    #maze_obj = maze.MazeRandom()
+    #maze_obj = maze.MazeRoom()
+    maze_obj = maze.MazeRandom()
+    #maze_obj = maze.MazeDungeon()
+
     maze_obj.generate()
     scene = gen_scene(maze_obj)
     #run_viewer(scene)

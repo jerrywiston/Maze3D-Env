@@ -3,7 +3,7 @@ import cv2
 
 class Maze:
     def __init__(self):
-        self.maze = None
+        pass
     
     def generate(self):
         raise NotImplementedError
@@ -87,9 +87,15 @@ class MazeRoom(Maze):
         return collision
 
 class MazeRandom(MazeRoom):
-    def __init__(self):
-        super().__init__()
-
     def generate(self, size=(11,11), room_max=(5,5), prob=0.8):
         import maze_gen
         self.maze = maze_gen.gen_maze(size[0],size[1],room_max,prob)
+
+class MazeDungeon(MazeRoom):
+    def generate(self):
+        import dungeon
+        gen = dungeon.Generator(width=24, height=24, max_rooms=5, min_room_xy=3, \
+            max_room_xy=8, rooms_overlap=False, random_connections=1, random_spurs=3)
+        gen.gen_level()
+        self.maze = np.array(gen.level, dtype=np.uint8)
+
