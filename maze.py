@@ -17,16 +17,9 @@ class Maze:
     def collision_detect(self):
         raise NotImplementedError
 
-class MazeRoom(Maze):
+class MazeGrid(Maze):
     def __init__(self):
         super().__init__()
-    
-    def generate(self, room_size=(4,4)):
-        self.maze = np.ones((room_size[0]+2, room_size[1]+2), dtype=np.uint8)
-        self.maze[:,0] = 255
-        self.maze[0,:] = 255
-        self.maze[room_size[0]+1,:] = 255
-        self.maze[:,room_size[1]+1] = 255
 
     def parse(self, obj_prob=0.2):
         floor_list = []
@@ -86,12 +79,20 @@ class MazeRoom(Maze):
             collision = True
         return collision
 
-class MazeRandom(MazeRoom):
+class MazeGridRoom(MazeGrid):
+    def generate(self, room_size=(4,4)):
+        self.maze = np.ones((room_size[0]+2, room_size[1]+2), dtype=np.uint8)
+        self.maze[:,0] = 255
+        self.maze[0,:] = 255
+        self.maze[room_size[0]+1,:] = 255
+        self.maze[:,room_size[1]+1] = 255
+
+class MazeGridRandom(MazeGrid):
     def generate(self, size=(11,11), room_max=(5,5), prob=0.8):
         import maze_gen
         self.maze = maze_gen.gen_maze(size[0],size[1],room_max,prob)
 
-class MazeDungeon(MazeRoom):
+class MazeGridDungeon(MazeGrid):
     def generate(self):
         import dungeon
         gen = dungeon.Generator(width=24, height=24, max_rooms=5, min_room_xy=3, \

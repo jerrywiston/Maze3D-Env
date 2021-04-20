@@ -263,9 +263,9 @@ def run_control(scene, maze):
 
 if __name__ == "__main__":
     import maze
-    #maze_obj = maze.MazeRoom()
-    maze_obj = maze.MazeRandom()
-    #maze_obj = maze.MazeDungeon()
+    #maze_obj = maze.MazeGridRoom()
+    maze_obj = maze.MazeGridRandom()
+    #maze_obj = maze.MazeGridDungeon()
 
     maze_obj.generate()
     scene = gen_scene(maze_obj)
