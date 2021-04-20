@@ -167,6 +167,12 @@ def gen_scene(size=(11,11), room_max=(5,5), prob=0.8):
     
     # Generate Maze 
     maze = maze_gen.gen_maze(size[0],size[1],room_max,prob)
+    #import dungeon
+    #gen = dungeon.Generator(width=24, height=24, max_rooms=5, min_room_xy=3,
+    #    max_room_xy=8, rooms_overlap=False, random_connections=1, random_spurs=3)
+    #gen.gen_level()
+    #maze = np.array(gen.level, dtype=np.uint8)
+
     mesh_floor_pr, mesh_wall_pr = gen_maze_mesh(maze)
     scene.add(mesh_floor_pr)
     scene.add(mesh_wall_pr)
@@ -209,8 +215,33 @@ def get_map(x, y, th, maze, map_scale=16):
 
     return maze_draw
 
+def collision_detect(agent_info, maze, eps=0.1):
+    collision = False
+    if maze[int(agent_info['y']),int(agent_info['x'])] == 255:
+        collision = True
+    elif maze[int(agent_info['y']+eps),int(agent_info['x'])] == 255:
+        collision = True
+    elif maze[int(agent_info['y']-eps),int(agent_info['x'])] == 255:
+        collision = True
+    elif maze[int(agent_info['y']),int(agent_info['x']+eps)] == 255:
+        collision = True
+    elif maze[int(agent_info['y']),int(agent_info['x']-eps)] == 255:
+        collision = True
+    '''
+    elif maze[int(agent_info['y']+eps),int(agent_info['x']+eps)] == 255:
+        collision = True
+    elif maze[int(agent_info['y']-eps),int(agent_info['x']-eps)] == 255:
+        collision = True
+    elif maze[int(agent_info['y']+eps),int(agent_info['x']-eps)] == 255:
+        collision = True
+    elif maze[int(agent_info['y']-eps),int(agent_info['x']+eps)] == 255:
+        collision = True
+    '''
+    return collision
+
+
 #############################################
-def run_dataset(scene, maze, view_size=4., gen_size=16, render=False):
+def run_dataset(rend, scene, maze, view_size=4., gen_size=16, show=False):
     images = []
     depths = []
     poses = []
@@ -221,8 +252,6 @@ def run_dataset(scene, maze, view_size=4., gen_size=16, render=False):
     scene.add_node(camera_node)
 
     flags = pyrender.RenderFlags.SKIP_CULL_FACES | pyrender.RenderFlags.SHADOWS_DIRECTIONAL
-    render_res = (192, 192)
-    rend = pyrender.OffscreenRenderer(render_res[0],render_res[1])
     count = 0
     x_min = np.random.uniform(0,float(maze.shape[1]-view_size))
     y_min = np.random.uniform(0,float(maze.shape[0]-view_size))
@@ -244,7 +273,7 @@ def run_dataset(scene, maze, view_size=4., gen_size=16, render=False):
             depths.append(depth[np.newaxis,...])
             poses.append(np.array([1, x, y, th]))
 
-            if render:
+            if show:
                 print("\rx={:.3f}, y={:.3f}, th={:.3f}\t".format(x, y, th*180/np.pi), end="")
                 maze_draw = get_map(x, y, th, maze)
                 cv2.imshow("maze", maze_draw)
@@ -284,67 +313,81 @@ def run_control(scene, maze):
     flags = pyrender.RenderFlags.SKIP_CULL_FACES | pyrender.RenderFlags.SHADOWS_DIRECTIONAL#| pyrender.RenderFlags.SHADOWS_ALL
     rend = pyrender.OffscreenRenderer(render_res[0],render_res[1])
     while(True):
-        # Draw Maze Map
-        maze_draw = get_map(agent_info["x"], agent_info["y"], agent_info["theta"], maze)
-        cv2.imshow("maze", maze_draw)
-
-        # Render Agent View
-        m = get_cam_pose(agent_info['x'], agent_info['y'], agent_info['theta'])
-        scene.set_pose(camera_node, m)
-
-        if render_frame:
-            start = time.time()
-            color, depth = rend.render(scene, flags)
-            end = time.time()
-            print("\rx={:.3f}, y={:.3f}, th={:.3f}, time={:.3f}\t"\
-                .format(agent_info['x'], agent_info['y'], agent_info['theta']*180/np.pi, end - start), end="")
-            color = cv2.cvtColor(color, cv2.COLOR_BGR2RGB)
-            cv2.imshow("camera", color)
-            cv2.imshow("depth", depth/5)
-            render_frame = False
-
         # Control Handling
+        agent_info_new = agent_info.copy()
         k = cv2.waitKey(1)
         if k == 27:
             break
         if k == ord('a'):
-            agent_info["x"] -= 0.1*np.sin(agent_info["theta"])
-            agent_info["y"] += 0.1*np.cos(agent_info["theta"])
+            agent_info_new["x"] -= 0.1*np.sin(agent_info_new["theta"])
+            agent_info_new["y"] += 0.1*np.cos(agent_info_new["theta"])
             render_frame = True
         if k == ord('d'):
-            agent_info["x"] += 0.1*np.sin(agent_info["theta"])
-            agent_info["y"] -= 0.1*np.cos(agent_info["theta"])
+            agent_info_new["x"] += 0.1*np.sin(agent_info_new["theta"])
+            agent_info_new["y"] -= 0.1*np.cos(agent_info_new["theta"])
             render_frame = True
         if k == ord('w'):
-            agent_info["x"] += 0.1*np.cos(agent_info["theta"])
-            agent_info["y"] += 0.1*np.sin(agent_info["theta"])
+            agent_info_new["x"] += 0.1*np.cos(agent_info_new["theta"])
+            agent_info_new["y"] += 0.1*np.sin(agent_info_new["theta"])
             render_frame = True
         if k == ord('s'):
-            agent_info["x"] -= 0.1*np.cos(agent_info["theta"])
-            agent_info["y"] -= 0.1*np.sin(agent_info["theta"])
+            agent_info_new["x"] -= 0.1*np.cos(agent_info_new["theta"])
+            agent_info_new["y"] -= 0.1*np.sin(agent_info_new["theta"])
             render_frame = True
         if k == ord('q'):
-            agent_info["theta"] += np.pi/18
+            agent_info_new["theta"] += np.pi/18
             render_frame = True
         if k == ord('e'):
-            agent_info["theta"] -= np.pi/18
+            agent_info_new["theta"] -= np.pi/18
             render_frame = True
+        
+        # Render Agent View
+        if render_frame:
+            # Collision Detection
+            if not collision_detect(agent_info_new, maze):
+                agent_info = agent_info_new
+
+            # Rendering
+            start = time.time()
+            m = get_cam_pose(agent_info['x'], agent_info['y'], agent_info['theta'])
+            scene.set_pose(camera_node, m)
+            color, depth = rend.render(scene, flags)
+            end = time.time()
+
+            print("\rx={:.3f}, y={:.3f}, th={:.3f}, time={:.3f}\t"\
+                .format(agent_info['x'], agent_info['y'], agent_info['theta']*180/np.pi, end - start), end="")
+
+            color = cv2.cvtColor(color, cv2.COLOR_BGR2RGB)
+            cv2.imshow("camera", color)
+            cv2.imshow("depth", depth/5)
+            render_frame = False
+        
+        # Draw Maze Map
+        maze_draw = get_map(agent_info["x"], agent_info["y"], agent_info["theta"], maze)
+        cv2.imshow("maze", maze_draw)
+
     print()
 
 if __name__ == "__main__":
-    #scene, maze = gen_scene((11,11), room_max=(5,5), prob=0.8)
+    scene, maze = gen_scene((11,11), room_max=(5,5), prob=0.8)
     #run_viewer(scene)
-    #run_control(scene, maze) 
-    #images, depths, poses = run_dataset(scene, maze, render=True)
+    run_control(scene, maze) 
 
+    #render_res = (192, 192)
+    #rend = pyrender.OffscreenRenderer(render_res[0],render_res[1])
+    #images, depths, poses = run_dataset(rend, scene, maze, render=True)
+
+    '''
     image_data = []
     depth_data = []
     pose_data = []
     maze_data = []
-    for i in range(100000):
+    for i in range(100):
         print(i)
-        scene, maze = gen_scene((5,5), room_max=(5,5), prob=0.8)
-        images, depths, poses = run_dataset(scene, maze, render=False)
+        render_res = (192, 192)
+        scene, maze = gen_scene((11,11), room_max=(5,5), prob=0.8)
+        rend = pyrender.OffscreenRenderer(render_res[0],render_res[1])
+        images, depths, poses = run_dataset(rend, scene, maze, show=False)
         image_data.append(images[np.newaxis,...])
         depth_data.append(depths[np.newaxis,...])
         pose_data.append(poses[np.newaxis,...])
@@ -361,3 +404,4 @@ if __name__ == "__main__":
         pose = pose_data,
         maze = maze_data,
     )
+    '''
