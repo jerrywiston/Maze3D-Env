@@ -50,17 +50,18 @@ class MazeGrid(Maze):
         return floor_list, wall_list, obj_list
     
     def get_map(self, agent_info, map_scale=16):
-        x, y, th = agent_info["x"], agent_info["y"], agent_info["theta"]
         maze_re = cv2.cvtColor(self.maze, cv2.COLOR_GRAY2RGB)
         maze_re = 255-cv2.resize(maze_re, (self.maze.shape[1]*map_scale, self.maze.shape[0]*map_scale), interpolation=cv2.INTER_NEAREST)
         maze_draw = maze_re.copy()
         
-        temp_y = int(y*map_scale)
-        temp_x = int(x*map_scale)
-        cv2.circle(maze_draw, (temp_x, temp_y), int(map_scale/4), (255,0,0), 3)
-        temp_y2 = int((y + 0.4*np.sin(th)) * map_scale)
-        temp_x2 = int((x + 0.4*np.cos(th)) * map_scale)
-        cv2.line(maze_draw, (temp_x, temp_y), (temp_x2, temp_y2), (0,0,255), 3)
+        if agent_info is not None:
+            x, y, th = agent_info["x"], agent_info["y"], agent_info["theta"]
+            temp_y = int(y*map_scale)
+            temp_x = int(x*map_scale)
+            cv2.circle(maze_draw, (temp_x, temp_y), int(map_scale/4), (255,0,0), 3)
+            temp_y2 = int((y + 0.4*np.sin(th)) * map_scale)
+            temp_x2 = int((x + 0.4*np.cos(th)) * map_scale)
+            cv2.line(maze_draw, (temp_x, temp_y), (temp_x2, temp_y2), (0,0,255), 3)
         maze_draw = cv2.flip(maze_draw,0)
 
         return maze_draw
@@ -127,7 +128,6 @@ class MazeBoard(Maze):
         return floor_list, wall_list, obj_list
     
     def get_map(self, agent_info, map_scale=16, wall_rate=0.4):
-        x, y, th = agent_info["x"], agent_info["y"], agent_info["theta"]
         maze_draw  = 255*np.ones((self.maze.shape[0]*map_scale, self.maze.shape[1]*map_scale, 3), dtype=np.uint8)
         
         # Draw Wall
@@ -160,17 +160,26 @@ class MazeBoard(Maze):
                     cv2.line(maze_draw, (x1, y1), (x2, y2), (0,0,0), wall_size)
 
         # Draw Agent
-        temp_y = int(y*map_scale)
-        temp_x = int(x*map_scale)
-        cv2.circle(maze_draw, (temp_x, temp_y), int(map_scale/4), (255,0,0), 3)
-        temp_y2 = int((y + 0.4*np.sin(th)) * map_scale)
-        temp_x2 = int((x + 0.4*np.cos(th)) * map_scale)
-        cv2.line(maze_draw, (temp_x, temp_y), (temp_x2, temp_y2), (0,0,255), 3)
+        if agent_info is not None:
+            x, y, th = agent_info["x"], agent_info["y"], agent_info["theta"]
+            temp_y = int(y*map_scale)
+            temp_x = int(x*map_scale)
+            cv2.circle(maze_draw, (temp_x, temp_y), int(map_scale/4), (255,0,0), 3)
+            temp_y2 = int((y + 0.4*np.sin(th)) * map_scale)
+            temp_x2 = int((x + 0.4*np.cos(th)) * map_scale)
+            cv2.line(maze_draw, (temp_x, temp_y), (temp_x2, temp_y2), (0,0,255), 3)
         maze_draw = cv2.flip(maze_draw,0)
         return maze_draw
     
     def collision_detect(self, agent_info):
-        return False
+        map_scale = 16
+        wall_rate = 0.4
+        if not hasattr(self, 'collision_map'):
+            self.collision_map = self.get_map(None, map_scale, wall_rate)
+        if self.collision_map[int(agent_info["y"]*map_scale), int(agent_info["x"]*map_scale), 0] == 0:
+            return True
+        else:
+            return False
 
 # T, L, B, R
 class MazeBoardRoom(MazeBoard):

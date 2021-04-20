@@ -203,7 +203,8 @@ def run_control(scene, maze):
     # Off-Screen Render
     render_frame = True
     render_res = (192, 192)
-    flags = pyrender.RenderFlags.SKIP_CULL_FACES | pyrender.RenderFlags.SHADOWS_DIRECTIONAL#| pyrender.RenderFlags.SHADOWS_ALL
+    #flags = pyrender.RenderFlags.SKIP_CULL_FACES | pyrender.RenderFlags.SHADOWS_DIRECTIONAL#| pyrender.RenderFlags.SHADOWS_ALL
+    flags = pyrender.RenderFlags.SHADOWS_DIRECTIONAL
     rend = pyrender.OffscreenRenderer(render_res[0],render_res[1])
     while(True):
         # Control Handling
