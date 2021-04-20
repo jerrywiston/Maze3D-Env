@@ -36,6 +36,34 @@ def read_texture(path, flist, size=256):
     img_tex = cv2.cvtColor(img_tex, cv2.COLOR_RGB2BGR)
     return img_tex
 
+def parse_maze(maze, obj_prob=0.2):
+    floor_list = []
+    wall_list = []
+    obj_list = []
+    for j in range(1,maze.shape[0]-1):
+        for i in range(1,maze.shape[1]-1):
+            if maze[j,i] < 255:
+                # Build Floor
+                floor_list.append({"voff":(i,j), "id":maze[j,i]})
+                # Build Wall Buttom
+                if maze[j-1,i]==255:
+                    wall_list.append({"voff":(i,j), "id":maze[j,i], "type":"B"})
+                # Build Wall Top
+                if maze[j+1,i]==255:
+                    wall_list.append({"voff":(i,j), "id":maze[j,i], "type":"T"})
+                # Build Wall Left
+                if maze[j,i-1]==255:
+                    wall_list.append({"voff":(i,j), "id":maze[j,i], "type":"L"})
+                # Build Wall Right
+                if maze[j,i+1]==255:
+                    wall_list.append({"voff":(i,j), "id":maze[j,i], "type":"R"})
+                # Build Object
+
+            if 0 < maze[j,i] < 255 and np.random.rand() < obj_prob:
+                obj_list.append({"voff":(i+0.5,j+0.5,0.5)})
+
+    return floor_list, wall_list, obj_list
+
 def gen_mesh(floor_list, wall_list, obj_list):
     path_floor = './resource/texture/floor'
     flist_floor = os.listdir(path_floor)
@@ -103,14 +131,21 @@ def gen_mesh(floor_list, wall_list, obj_list):
 
     return mesh_floor_pr, mesh_wall_pr, mesh_obj_pr
     
-def gen_scene(maze):
+def gen_maze_scene(size=(11,11), room_max=(5,5), prob=0.8):
     # Initialize Scene
     amb_intensity = 0.2
     bg_color = np.array([160,200,255,0])
     scene = pyrender.Scene(ambient_light=amb_intensity*np.ones(3), bg_color=bg_color)
     
     # Generate Maze 
-    floor_list, wall_list, obj_list = maze.parse()
+    maze = maze_gen.gen_maze(size[0],size[1],room_max,prob)
+    #import dungeon
+    #gen = dungeon.Generator(width=24, height=24, max_rooms=5, min_room_xy=3,
+    #    max_room_xy=8, rooms_overlap=False, random_connections=1, random_spurs=3)
+    #gen.gen_level()
+    #maze = np.array(gen.level, dtype=np.uint8)
+
+    floor_list, wall_list, obj_list = parse_maze(maze)
     mesh_floor_pr, mesh_wall_pr, mesh_obj_pr = gen_mesh(floor_list, wall_list, obj_list)
     scene.add(mesh_floor_pr)
     scene.add(mesh_wall_pr)
@@ -123,7 +158,7 @@ def gen_scene(maze):
     light_node = pyrender.Node(light=dir_light, matrix=m)
     scene.add_node(light_node)
 
-    return scene
+    return scene, maze
 
 def get_cam_pose(x, y, th):
     r = glm.mat4_cast(glm.quat(glm.vec3(-np.pi/2,np.pi/2-th,0)))
@@ -131,6 +166,46 @@ def get_cam_pose(x, y, th):
     m = r * glm.transpose(t)
     m = np.array(m)
     return m
+
+def get_map(x, y, th, maze, map_scale=16):
+    maze_re = cv2.cvtColor(maze, cv2.COLOR_GRAY2RGB)
+    maze_re = 255-cv2.resize(maze_re, (maze.shape[1]*map_scale, maze.shape[0]*map_scale), interpolation=cv2.INTER_NEAREST)
+    maze_draw = maze_re.copy()
+        
+    temp_y = int(y*map_scale)
+    temp_x = int(x*map_scale)
+    cv2.circle(maze_draw, (temp_x, temp_y), 4, (255,0,0), 3)
+    temp_y2 = int((y + 0.4*np.sin(th)) * map_scale)
+    temp_x2 = int((x + 0.4*np.cos(th)) * map_scale)
+    cv2.line(maze_draw, (temp_x, temp_y), (temp_x2, temp_y2), (0,0,255), 3)
+    maze_draw = cv2.flip(maze_draw,0)
+
+    return maze_draw
+
+def collision_detect(agent_info, maze, eps=0.1):
+    collision = False
+    if maze[int(agent_info['y']),int(agent_info['x'])] == 255:
+        collision = True
+    elif maze[int(agent_info['y']+eps),int(agent_info['x'])] == 255:
+        collision = True
+    elif maze[int(agent_info['y']-eps),int(agent_info['x'])] == 255:
+        collision = True
+    elif maze[int(agent_info['y']),int(agent_info['x']+eps)] == 255:
+        collision = True
+    elif maze[int(agent_info['y']),int(agent_info['x']-eps)] == 255:
+        collision = True
+    '''
+    elif maze[int(agent_info['y']+eps),int(agent_info['x']+eps)] == 255:
+        collision = True
+    elif maze[int(agent_info['y']-eps),int(agent_info['x']-eps)] == 255:
+        collision = True
+    elif maze[int(agent_info['y']+eps),int(agent_info['x']-eps)] == 255:
+        collision = True
+    elif maze[int(agent_info['y']-eps),int(agent_info['x']+eps)] == 255:
+        collision = True
+    '''
+    return collision
+
 
 #############################################
 def run_dataset(rend, scene, maze, view_size=4., gen_size=16, show=False):
@@ -152,8 +227,7 @@ def run_dataset(rend, scene, maze, view_size=4., gen_size=16, show=False):
         x = np.random.uniform(x_min, x_min + view_size)
         y = np.random.uniform(y_min, y_min + view_size)
         th = np.random.uniform(0,np.pi*2)
-        agent_info = {"x":x, "y":y, "theta":th}
-        if not maze.collision_detect(agent_info):
+        if maze[int(y),int(x)] != 255:
             r = glm.mat4_cast(glm.quat(glm.vec3(-np.pi/2,np.pi/2-th,0)))
             t = glm.translate(glm.mat4(1), glm.vec3(x,y,0.5))
             m = r * glm.transpose(t)
@@ -168,7 +242,7 @@ def run_dataset(rend, scene, maze, view_size=4., gen_size=16, show=False):
 
             if show:
                 print("\rx={:.3f}, y={:.3f}, th={:.3f}\t".format(x, y, th*180/np.pi), end="")
-                maze_draw = maze.get_map(agent_info)
+                maze_draw = get_map(x, y, th, maze)
                 cv2.imshow("maze", maze_draw)
                 cv2.imshow("color", color)
                 cv2.waitKey(0)
@@ -237,7 +311,7 @@ def run_control(scene, maze):
         # Render Agent View
         if render_frame:
             # Collision Detection
-            if not maze.collision_detect(agent_info_new):
+            if not collision_detect(agent_info_new, maze):
                 agent_info = agent_info_new
 
             # Rendering
@@ -256,16 +330,45 @@ def run_control(scene, maze):
             render_frame = False
         
         # Draw Maze Map
-        maze_draw = maze.get_map(agent_info)
+        maze_draw = get_map(agent_info["x"], agent_info["y"], agent_info["theta"], maze)
         cv2.imshow("maze", maze_draw)
 
     print()
 
 if __name__ == "__main__":
-    import maze
-    maze_obj = maze.MazeRoom()
-    #maze_obj = maze.MazeRandom()
-    maze_obj.generate()
-    scene = gen_scene(maze_obj)
+    scene, maze = gen_maze_scene((11,11), room_max=(5,5), prob=0.8)
     #run_viewer(scene)
-    run_control(scene, maze_obj) 
+    run_control(scene, maze) 
+
+    #render_res = (192, 192)
+    #rend = pyrender.OffscreenRenderer(render_res[0],render_res[1])
+    #images, depths, poses = run_dataset(rend, scene, maze, render=True)
+
+    '''
+    image_data = []
+    depth_data = []
+    pose_data = []
+    maze_data = []
+    for i in range(100):
+        print(i)
+        render_res = (192, 192)
+        scene, maze = gen_scene((11,11), room_max=(5,5), prob=0.8)
+        rend = pyrender.OffscreenRenderer(render_res[0],render_res[1])
+        images, depths, poses = run_dataset(rend, scene, maze, show=False)
+        image_data.append(images[np.newaxis,...])
+        depth_data.append(depths[np.newaxis,...])
+        pose_data.append(poses[np.newaxis,...])
+        maze_data.append(maze[np.newaxis,...])
+    
+    image_data = np.concatenate(image_data, 0)
+    depth_data = np.concatenate(depth_data, 0)
+    pose_data = np.concatenate(pose_data, 0)
+    maze_data = np.concatenate(maze_data, 0)
+    
+    np.savez("maze.npz", 
+        image = image_data, 
+        depth = depth_data,
+        pose = pose_data,
+        maze = maze_data,
+    )
+    '''
