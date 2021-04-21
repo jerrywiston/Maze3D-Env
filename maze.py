@@ -16,6 +16,9 @@ class Maze:
     
     def collision_detect(self):
         raise NotImplementedError
+    
+    def random_pose(self):
+        raise NotImplementedError
 
 #######################################
 # Grid Maze
@@ -79,6 +82,16 @@ class MazeGrid(Maze):
         elif self.maze[int(agent_info['y']),int(agent_info['x']-eps)] == 255:
             collision = True
         return collision
+    
+    def random_pose(self):
+        while(True):
+            y = self.maze.shape[0] * np.random.rand()
+            x = self.maze.shape[1] * np.random.rand()
+            th = np.pi * 2 * np.random.rand()
+            agent_info = {"x":x, "y":y, "theta":th}
+            if self.collision_detect(agent_info) == False:
+                return  agent_info
+
 
 class MazeGridRoom(MazeGrid):
     def generate(self, room_size=(4,4)):
@@ -90,8 +103,8 @@ class MazeGridRoom(MazeGrid):
 
 class MazeGridRandom(MazeGrid):
     def generate(self, size=(11,11), room_max=(5,5), prob=0.8):
-        import maze_gen
-        self.maze = maze_gen.gen_maze(size[0],size[1],room_max,prob)
+        import maze_gen_grid
+        self.maze = maze_gen_grid.gen_maze(size[0],size[1],room_max,prob)
 
 class MazeGridDungeon(MazeGrid):
     def generate(self):
@@ -173,6 +186,15 @@ class MazeBoard(Maze):
             return True
         else:
             return False
+    
+    def random_pose(self):
+        while(True):
+            y = self.maze.shape[0] * np.random.rand()
+            x = self.maze.shape[1] * np.random.rand()
+            th = np.pi * 2 * np.random.rand()
+            agent_info = {"x":x, "y":y, "theta":th}
+            if self.collision_detect(agent_info) == False:
+                return  agent_info
 
 # T, L, B, R
 class MazeBoardRoom(MazeBoard):
@@ -182,6 +204,9 @@ class MazeBoardRoom(MazeBoard):
         self.maze[room_size[0]-1,:,2] = 1
         self.maze[:,0,1] = 1
         self.maze[:,room_size[1]-1,3] = 1
+        self.map_scale = 16
+        self.wall_rate = 0.4
+        self.collision_map = self.get_map(None, self.map_scale, self.wall_rate, flip=False)
 
 class MazeBoardRandom(MazeBoard):
     def generate(self, size=(9,9), room_size=3, room_num=3):

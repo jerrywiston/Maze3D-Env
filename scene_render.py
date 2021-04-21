@@ -9,7 +9,6 @@ import pyrender
 import numpy as np
 import glm
 import cv2
-import maze_gen
 import structure
 import obj_loader
 
@@ -103,14 +102,13 @@ def gen_mesh(floor_list, wall_list, obj_list):
 
     return mesh_floor_pr, mesh_wall_pr, mesh_obj_pr
     
-def gen_scene(maze):
+def gen_scene(floor_list, wall_list, obj_list):
     # Initialize Scene
     amb_intensity = 0.2
     bg_color = np.array([160,200,255,0])
     scene = pyrender.Scene(ambient_light=amb_intensity*np.ones(3), bg_color=bg_color)
     
     # Generate Maze 
-    floor_list, wall_list, obj_list = maze.parse()
     mesh_floor_pr, mesh_wall_pr, mesh_obj_pr = gen_mesh(floor_list, wall_list, obj_list)
     scene.add(mesh_floor_pr)
     scene.add(mesh_wall_pr)
@@ -197,7 +195,7 @@ def run_viewer(scene):
 
 def run_control(scene, maze):
     # Set Camera 
-    agent_info = {"x":1.5, "y":1.5, "theta":0}
+    agent_info = maze.random_pose()#{"x":1.5, "y":1.5, "theta":0}
     camera = pyrender.PerspectiveCamera(yfov=np.pi/3.0, aspectRatio=1.0)
     camera_node = pyrender.Node(camera=camera)
     scene.add_node(camera_node)
@@ -205,7 +203,7 @@ def run_control(scene, maze):
     # Off-Screen Render
     render_frame = True
     render_res = (192, 192)
-    flags = pyrender.RenderFlags.SKIP_CULL_FACES | pyrender.RenderFlags.SHADOWS_DIRECTIONAL#| pyrender.RenderFlags.SHADOWS_ALL
+    flags = pyrender.RenderFlags.SKIP_CULL_FACES | pyrender.RenderFlags.SHADOWS_DIRECTIONAL | pyrender.RenderFlags.SHADOWS_ALL
     #flags = pyrender.RenderFlags.SHADOWS_DIRECTIONAL
     rend = pyrender.OffscreenRenderer(render_res[0],render_res[1])
     while(True):
@@ -273,6 +271,7 @@ if __name__ == "__main__":
     maze_obj = maze.MazeBoardRandom()
 
     maze_obj.generate()
-    scene = gen_scene(maze_obj)
+    floor_list, wall_list, obj_list = maze_obj.parse()
+    scene = gen_scene(floor_list, wall_list, obj_list)
     #run_viewer(scene)
     run_control(scene, maze_obj) 
