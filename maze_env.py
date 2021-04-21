@@ -5,17 +5,7 @@ import pyrender
 import scene_render
 import maze
 
-class BaseEnv:
-    def __init__(self):
-        pass
-
-    def reset(self):
-        return NotImplementedError
-    
-    def step(self, a):
-        return NotImplementedError
-
-class MazeBaseEnv(BaseEnv):
+class MazeBaseEnv:
     def __init__(self, maze_obj, render_res=(192,192)):
         super().__init__()
         self.maze = maze_obj
@@ -76,11 +66,25 @@ class MazeBaseEnv(BaseEnv):
         return color, 0, False, {"color":color, "depth":depth, "pose":self.agent_info, "map":self.maze.get_map(self.agent_info)}
         
 if __name__ == "__main__":
-    #maze_obj = maze.MazeGridRoom()
-    #maze_obj = maze.MazeGridRandom()
-    #maze_obj = maze.MazeGridDungeon()
-    #maze_obj = maze.MazeBoardRoom()
-    maze_obj = maze.MazeBoardRandom()
+    # Select maze type.
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--type', '-t', nargs='?', type=str, default="MazeGridRoom", help='Maze type.')
+    maze_type = parser.parse_args().type
+    if maze_type == "MazeGridRoom":
+        maze_obj = maze.MazeGridRoom()
+    elif maze_type == "MazeGridRandom":
+        maze_obj = maze.MazeGridRandom()
+    elif maze_type == "MazeGridDungeon":
+        maze_obj = maze.MazeGridDungeon()
+    elif maze_type == "MazeBoardRoom":
+        maze_obj = maze.MazeBoardRoom()
+    elif maze_type == "MazeBoardRandom":
+        maze_obj = maze.MazeBoardRandom()
+    else:
+        maze_obj = maze.MazeBoardRandom()
+
+    # Initial Env
     env = MazeBaseEnv(maze_obj, render_res=(192,192))
     state, info = env.reset()
 

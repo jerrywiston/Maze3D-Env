@@ -7,3 +7,4 @@ A simple 3D maze render environment for reinforcement learning.
 - opencv-python
 - pyrender 0.1.39
 - pyglm
+- trimesh
