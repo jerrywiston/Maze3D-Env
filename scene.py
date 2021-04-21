@@ -118,9 +118,10 @@ def gen_scene(maze):
         scene.add(mesh_obj_pr)
     
     # Add Light 
-    dir_light = pyrender.DirectionalLight(color=np.ones(3), intensity=6)
-    m = glm.mat4_cast(glm.quat(glm.vec3(0.5,0.4,np.pi/2)))
+    dir_light = pyrender.DirectionalLight(color=np.ones(3), intensity=3)
+    #m = glm.mat4_cast(glm.quat(glm.vec3(0.5,0.4,np.pi/2)))
     #m = glm.mat4_cast(glm.quat(glm.vec3(0.8,0,np.pi/2)))
+    m = glm.mat4_cast(glm.quat(glm.vec3(0.2,0.2,np.pi/2)))
     light_node = pyrender.Node(light=dir_light, matrix=m)
     scene.add_node(light_node)
 

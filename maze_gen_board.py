@@ -113,8 +113,8 @@ class Maze:
 
 
 if __name__ == "__main__":
-    M = Maze(30, 30)
+    M = Maze(11, 11)
     M.dfs(10, 10)
-    M.imperfect2()
-    M.imperfect1()
+    M.imperfect2(size=5, num=6)
+    #M.imperfect1()
     M.render()
