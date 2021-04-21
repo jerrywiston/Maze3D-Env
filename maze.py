@@ -61,9 +61,9 @@ class MazeGrid(Maze):
             x, y, th = agent_info["x"], agent_info["y"], agent_info["theta"]
             temp_y = int(y*map_scale)
             temp_x = int(x*map_scale)
-            cv2.circle(maze_draw, (temp_x, temp_y), int(map_scale/4), (255,0,0), 3)
-            temp_y2 = int((y + 0.4*np.sin(th)) * map_scale)
-            temp_x2 = int((x + 0.4*np.cos(th)) * map_scale)
+            cv2.circle(maze_draw, (temp_x, temp_y), int(map_scale/5), (255,0,0), 3)
+            temp_y2 = int((y + 0.3*np.sin(th)) * map_scale)
+            temp_x2 = int((x + 0.3*np.cos(th)) * map_scale)
             cv2.line(maze_draw, (temp_x, temp_y), (temp_x2, temp_y2), (0,0,255), 3)
         maze_draw = cv2.flip(maze_draw,0)
 
@@ -173,9 +173,9 @@ class MazeBoard(Maze):
             x, y, th = agent_info["x"], agent_info["y"], agent_info["theta"]
             temp_y = int(y*map_scale)
             temp_x = int(x*map_scale)
-            cv2.circle(maze_draw, (temp_x, temp_y), int(map_scale/4), (255,0,0), 3)
-            temp_y2 = int((y + 0.4*np.sin(th)) * map_scale)
-            temp_x2 = int((x + 0.4*np.cos(th)) * map_scale)
+            cv2.circle(maze_draw, (temp_x, temp_y), int(map_scale/5), (255,0,0), 3)
+            temp_y2 = int((y + 0.3*np.sin(th)) * map_scale)
+            temp_x2 = int((x + 0.3*np.cos(th)) * map_scale)
             cv2.line(maze_draw, (temp_x, temp_y), (temp_x2, temp_y2), (0,0,255), 3)
         if flip:
             maze_draw = cv2.flip(maze_draw,0)

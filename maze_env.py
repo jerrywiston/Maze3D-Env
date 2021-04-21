@@ -13,6 +13,7 @@ class MazeBaseEnv:
         self.render_res = render_res
         self.render_flags = pyrender.RenderFlags.SKIP_CULL_FACES | pyrender.RenderFlags.SHADOWS_DIRECTIONAL | pyrender.RenderFlags.SHADOWS_ALL
         self.rend = pyrender.OffscreenRenderer(self.render_res[0],self.render_res[1])
+        self.map_scale = 16
         
     def _gen_scene(self):
         self.maze.generate()
@@ -30,14 +31,29 @@ class MazeBaseEnv:
             color = cv2.cvtColor(color, cv2.COLOR_BGR2RGB)
         return color, depth
 
+    def _draw_traj(self, map_img):
+        map_img = cv2.flip(map_img.copy(), 0)
+        for i in range(len(self.traj)-1):
+            x1 = int(self.map_scale*self.traj[i]["x"])
+            y1 = int(self.map_scale*self.traj[i]["y"])
+            x2 = int(self.map_scale*self.traj[i+1]["x"])
+            y2 = int(self.map_scale*self.traj[i+1]["y"])
+            cv2.line(map_img, (x1,y1), (x2,y2), (0,255,0), 1)
+        map_img = cv2.flip(map_img, 0)
+        return map_img
+        
     def reset(self, gen_maze=True):
         if gen_maze:
             self._gen_scene()
         # Set Camera 
         self.agent_info = self.maze.random_pose()
+        self.traj = [self.agent_info]
         color, depth = self._render_frame()
         # Return State / Info
-        return color, {"color":color, "depth":depth, "pose":self.agent_info, "map":self.maze.get_map(self.agent_info)}
+        self.state = color
+        map_img = self._draw_traj(self.maze.get_map(self.agent_info, self.map_scale))
+        self.info = {"color":color, "depth":depth, "pose":self.agent_info, "map":map_img}
+        return self.state, self.info
     
     def step(self, action):
         agent_info_new = self.agent_info.copy()
@@ -61,19 +77,24 @@ class MazeBaseEnv:
         if not self.maze.collision_detect(agent_info_new):
             self.agent_info = agent_info_new
         
+        self.traj.append(self.agent_info)
         color, depth = self._render_frame()
+        
         # Return State / Reward / Done / Info
-        return color, 0, False, {"color":color, "depth":depth, "pose":self.agent_info, "map":self.maze.get_map(self.agent_info)}
+        self.state = color
+        map_img = self._draw_traj(self.maze.get_map(self.agent_info, self.map_scale))
+        self.info = {"color":color, "depth":depth, "pose":self.agent_info, "map":map_img}
+        return self.state, 0, False, self.info
 
-def _render(info, res=(192,192)):
-    color = cv2.resize(info["color"], res) 
-    depth = (cv2.resize(info["depth"]/5, res) * 255)
-    depth[depth>255] = 255
-    depth = depth.astype(np.uint8)[...,np.newaxis]
-    depth = np.concatenate([depth, depth, depth], 2)
-    map_img = cv2.resize(info["map"], res)
-    render_img = cv2.hconcat([color, depth, map_img])
-    cv2.imshow("MazeEnv", render_img)
+    def render(self, res=(192,192)):
+        color = cv2.resize(self.info["color"], res, interpolation=cv2.INTER_NEAREST) 
+        depth = (cv2.resize(self.info["depth"]/5, res, res, interpolation=cv2.INTER_NEAREST) * 255)
+        depth[depth>255] = 255
+        depth = depth.astype(np.uint8)[...,np.newaxis]
+        depth = np.concatenate([depth, depth, depth], 2)
+        map_img = cv2.resize(self.info["map"], res, res, interpolation=cv2.INTER_NEAREST)
+        render_img = cv2.hconcat([color, depth, map_img])
+        cv2.imshow("MazeEnv", render_img)
 
 if __name__ == "__main__":
     # Select maze type.
@@ -97,7 +118,7 @@ if __name__ == "__main__":
     # Initial Env
     env = MazeBaseEnv(maze_obj, render_res=(192,192))
     state, info = env.reset()
-    _render(info)
+    env.render()
 
     while(True):
         # Control Handle
@@ -109,12 +130,12 @@ if __name__ == "__main__":
         # Reset Maze
         if k == 13:
             state, info = env.reset()
-            _render(info)
+            env.render()
             continue
         # Reset Pose
         if k == 32:
             state, info = env.reset(gen_maze=False)
-            _render(info)
+            env.render()
             continue
         if k == ord('w'):
             action = 0
@@ -138,5 +159,5 @@ if __name__ == "__main__":
         if run_step:
             state, reward, done, info = env.step(action)
             print("\r", info["pose"], end="\t")
-            _render(info)
+            env.render()
         
