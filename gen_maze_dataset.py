@@ -69,7 +69,11 @@ if __name__ == "__main__":
 
     # Initial Env
     env = maze_env.MazeBaseEnv(maze_obj, render_res=(96,96))
+    dataset_path = "../maze_dataset/"
+    import os
+    if not os.path.exists(dataset_path):
+        os.makedirs(dataset_path)
     for i in range(100):
         color_data_np, depth_data_np, pose_data_np = gen_dataset(env, scene_size=128, samp_size=16)
-        np.savez("../MazeGridRoom11x11_dataset96_"+str(i).zfill(3)+".npz", color=color_data_np, depth=depth_data_np, pose=pose_data_np)
+        np.savez(os.path.join(dataset_path, "MazeGridRoom11x11_dataset96_"+str(i).zfill(3)+".npz"), color=color_data_np, depth=depth_data_np, pose=pose_data_np)
     
