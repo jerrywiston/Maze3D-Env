@@ -160,7 +160,8 @@ if __name__ == "__main__":
             run_step = True
         
         if run_step:
-            state, reward, done, info = env.step(action)
+            state_next, reward, done, info = env.step(action)
             print("\r", info["pose"], end="\t")
             env.render()
+            state = state_next.copy()
         

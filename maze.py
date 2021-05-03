@@ -108,12 +108,12 @@ class MazeGridRoom(MazeGrid):
 
 class MazeGridRandom(MazeGrid):
     def generate(self, size=(11,11), room_max=(5,5), prob=0.8):
-        import maze_gen_grid
+        from MazeGen import maze_gen_grid
         self.maze = maze_gen_grid.gen_maze(size[0],size[1],room_max,prob)
 
 class MazeGridDungeon(MazeGrid):
     def generate(self):
-        import dungeon
+        from MazeGen import maze_gen_dungeon
         gen = dungeon.Generator(width=24, height=24, max_rooms=5, min_room_xy=3, \
             max_room_xy=8, rooms_overlap=False, random_connections=1, random_spurs=3)
         gen.gen_level()
@@ -221,7 +221,7 @@ class MazeBoardRoom(MazeBoard):
 
 class MazeBoardRandom(MazeBoard):
     def generate(self, size=(9,9), room_size=3, room_num=3):
-        import maze_gen_board
+        from MazeGen import maze_gen_board
         M = maze_gen_board.Maze(size[0], size[1])
         M.dfs(0,0)
         M.imperfect2(size=room_size, num=room_num)
