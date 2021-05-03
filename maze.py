@@ -71,6 +71,12 @@ class MazeGrid(Maze):
     
     def collision_detect(self, agent_info, eps=0.1):
         collision = False
+        # Check in map
+        if agent_info['y'] < 0 or agent_info['y'] > self.maze.shape[0]:
+            return True
+        if agent_info['x'] < 0 or agent_info['x'] > self.maze.shape[1]:
+            return True
+        # Check Collision
         if self.maze[int(agent_info['y']),int(agent_info['x'])] == 255:
             collision = True
         elif self.maze[int(agent_info['y']+eps),int(agent_info['x'])] == 255:
@@ -91,7 +97,6 @@ class MazeGrid(Maze):
             agent_info = {"x":x, "y":y, "theta":th}
             if self.collision_detect(agent_info) == False:
                 return  agent_info
-
 
 class MazeGridRoom(MazeGrid):
     def generate(self, room_size=(4,4)):
@@ -182,6 +187,12 @@ class MazeBoard(Maze):
         return maze_draw
     
     def collision_detect(self, agent_info):
+        # Check in map
+        if agent_info['y'] < 0 or agent_info['y'] > self.maze.shape[0]:
+            return True
+        if agent_info['x'] < 0 or agent_info['x'] > self.maze.shape[1]:
+            return True
+        # Check Collision
         if self.collision_map[int(agent_info["y"]*self.map_scale), int(agent_info["x"]*self.map_scale), 0] == 0:
             return True
         else:

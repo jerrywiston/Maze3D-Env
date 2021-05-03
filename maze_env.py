@@ -23,14 +23,6 @@ class MazeBaseEnv:
         self.camera_node = pyrender.Node(camera=camera)
         self.scene.add_node(self.camera_node)
     
-    def _render_frame(self, toRGB=True):
-        m = scene_render.get_cam_pose(self.agent_info['x'], self.agent_info['y'], self.agent_info['theta'])
-        self.scene.set_pose(self.camera_node, m)
-        color, depth = self.rend.render(self.scene, self.render_flags)
-        if toRGB:
-            color = cv2.cvtColor(color, cv2.COLOR_BGR2RGB)
-        return color, depth
-
     def _draw_traj(self, map_img):
         map_img = cv2.flip(map_img.copy(), 0)
         for i in range(len(self.traj)-1):
@@ -41,14 +33,25 @@ class MazeBaseEnv:
             cv2.line(map_img, (x1,y1), (x2,y2), (0,255,0), 1)
         map_img = cv2.flip(map_img, 0)
         return map_img
+    
+    def render_frame(self, toRGB=True):
+        m = scene_render.get_cam_pose(self.agent_info['x'], self.agent_info['y'], self.agent_info['theta'])
+        self.scene.set_pose(self.camera_node, m)
+        color, depth = self.rend.render(self.scene, self.render_flags)
+        if toRGB:
+            color = cv2.cvtColor(color, cv2.COLOR_BGR2RGB)
+        return color, depth
         
-    def reset(self, gen_maze=True):
+    def reset(self, gen_maze=True, init_agent_info=None):
         if gen_maze:
             self._gen_scene()
         # Set Camera 
-        self.agent_info = self.maze.random_pose()
+        if init_agent_info is None:
+            self.agent_info = self.maze.random_pose()
+        else:
+            self.agent_info = init_agent_info
         self.traj = [self.agent_info]
-        color, depth = self._render_frame()
+        color, depth = self.render_frame()
         # Return State / Info
         self.state = color
         map_img = self._draw_traj(self.maze.get_map(self.agent_info, self.map_scale))
@@ -78,7 +81,7 @@ class MazeBaseEnv:
             self.agent_info = agent_info_new
         
         self.traj.append(self.agent_info)
-        color, depth = self._render_frame()
+        color, depth = self.render_frame()
         
         # Return State / Reward / Done / Info
         self.state = color
