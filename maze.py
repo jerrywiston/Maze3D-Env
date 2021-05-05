@@ -24,7 +24,11 @@ class Maze:
 # Grid Maze
 #######################################
 class MazeGrid(Maze):
-    def parse(self, obj_prob=0.2):
+    def __init__(self, obj_prob=0.0):
+        super().__init__()
+        self.obj_prob = obj_prob
+
+    def parse(self):
         floor_list = []
         wall_list = []
         obj_list = []
@@ -47,7 +51,7 @@ class MazeGrid(Maze):
                         wall_list.append({"voff":(i,j), "id":self.maze[j,i], "type":"R"})
                 
                 # Build Object
-                if 0 < self.maze[j,i] < 255 and np.random.rand() < obj_prob:
+                if 0 < self.maze[j,i] < 255 and np.random.rand() < self.obj_prob:
                     obj_list.append({"voff":(i+0.5,j+0.5,0.5)})
 
         return floor_list, wall_list, obj_list

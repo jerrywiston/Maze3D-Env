@@ -65,9 +65,21 @@ def gen_mesh(floor_list, wall_list, obj_list):
     
     # Build Object
     for data in obj_list:
-        mesh_id = np.random.randint(len(flist_mesh))
-        color_id = np.random.randint(len(flist_obj))
-        scale = np.random.uniform(0.2,0.6)
+        if "mesh_id" in data:
+            mesh_id = data["mesh_id"]
+        else:
+            mesh_id = np.random.randint(len(flist_mesh))
+
+        if "color_id" in data:
+            color_id = data["color_id"]
+        else:
+            color_id = np.random.randint(len(flist_obj))
+        
+        if "scale" in data:
+            scale = data["scale"]
+        else:
+            scale = np.random.uniform(0.2,0.6)
+            
         v, vn, f, vt, foff = obj_loader.load_(os.path.join(path_mesh, flist_mesh[mesh_id]), \
                             data["voff"], struct_obj['foff'], scale, len(flist_obj), color_id)
         struct_obj = add_struct(v, vn, f, vt, foff, struct_obj)

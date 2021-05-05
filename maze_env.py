@@ -7,16 +7,13 @@ import maze
 
 class MazeBaseEnv:
     def __init__(self, maze_obj, render_res=(192,192)):
-        super().__init__()
         self.maze = maze_obj
-        self._gen_scene()
         self.render_res = render_res
         self.render_flags = pyrender.RenderFlags.SKIP_CULL_FACES | pyrender.RenderFlags.SHADOWS_DIRECTIONAL | pyrender.RenderFlags.SHADOWS_ALL
         self.rend = pyrender.OffscreenRenderer(self.render_res[0],self.render_res[1])
         self.map_scale = 16
         
     def _gen_scene(self):
-        self.maze.generate()
         floor_list, wall_list, obj_list = self.maze.parse()
         self.scene = scene_render.gen_scene(floor_list, wall_list, obj_list)
         camera = pyrender.PerspectiveCamera(yfov=np.pi/3.0, aspectRatio=1.0)
@@ -44,6 +41,7 @@ class MazeBaseEnv:
         
     def reset(self, gen_maze=True, init_agent_info=None):
         if gen_maze:
+            self.maze.generate()
             self._gen_scene()
         # Set Camera 
         if init_agent_info is None:
@@ -84,10 +82,10 @@ class MazeBaseEnv:
         color, depth = self.render_frame()
         
         # Return State / Reward / Done / Info
-        self.state = color
+        self.state_next = color
         map_img = self._draw_traj(self.maze.get_map(self.agent_info, self.map_scale))
         self.info = {"color":color, "depth":depth, "pose":self.agent_info, "map":map_img}
-        return self.state, 0, False, self.info
+        return self.state_next, 0, False, self.info
 
     def render(self, res=(192,192)):
         color = cv2.resize(self.info["color"], res, interpolation=cv2.INTER_NEAREST) 
@@ -99,6 +97,60 @@ class MazeBaseEnv:
         render_img = cv2.hconcat([color, depth, map_img])
         cv2.imshow("MazeEnv", render_img)
 
+class MazeNavEnv(MazeBaseEnv):
+    def __init__(self, maze_obj, render_res=(192,192)):
+        super().__init__(maze_obj, render_res)
+        
+    def _gen_scene(self):
+        floor_list, wall_list, obj_list = self.maze.parse()
+        obj_list.append({"voff":(self.nav_target["x"], self.nav_target["y"], 0.5), "color_id":0, "mesh_id":2, "scale":0.5})
+        self.scene = scene_render.gen_scene(floor_list, wall_list, obj_list)
+        camera = pyrender.PerspectiveCamera(yfov=np.pi/3.0, aspectRatio=1.0)
+        self.camera_node = pyrender.Node(camera=camera)
+        self.scene.add_node(self.camera_node)
+    
+    def _draw_nav_target(self, map_img):
+        map_img = cv2.flip(map_img.copy(), 0)
+        x = int(self.map_scale*self.nav_target["x"])
+        y = int(self.map_scale*self.nav_target["y"])
+        cv2.circle(map_img, (x,y), int(0.2*self.map_scale), (255,255,0), 2)
+        map_img = cv2.flip(map_img, 0)
+        return map_img
+
+    def reset(self, gen_maze=True, change_nav_target=True, init_agent_info=None):
+        if gen_maze:
+            self.maze.generate()
+        
+        if change_nav_target or gen_maze or not hasattr(self, "nav_target"):
+            self.nav_target = self.maze.random_pose()
+
+        self._gen_scene()
+
+        # Set Camera 
+        if init_agent_info is None:
+            self.agent_info = self.maze.random_pose()
+        else:
+            self.agent_info = init_agent_info
+        self.traj = [self.agent_info]
+        color, depth = self.render_frame()
+        # Return State / Info
+        self.state = color
+        map_img = self._draw_traj(self.maze.get_map(self.agent_info, self.map_scale))
+        map_img = self._draw_nav_target(map_img)
+        self.info = {"color":color, "depth":depth, "pose":self.agent_info, "map":map_img, "target":self.nav_target}
+        return self.state, self.info
+
+    def step(self, action):
+        state_next, reward, done, info = super().step(action)
+        self.info["map"] = self._draw_nav_target(self.info["map"])
+        dist = (self.agent_info["x"] - self.nav_target["x"])**2 + (self.agent_info["y"] - self.nav_target["y"])**2
+        dist = np.sqrt(dist)
+        self.info["target"] = self.nav_target
+        if dist < 0.5:
+            done = True
+            reward = 1.0
+        return self.state_next, reward, done, self.info 
+        
 if __name__ == "__main__":
     # Select maze type.
     import argparse
@@ -119,7 +171,8 @@ if __name__ == "__main__":
         maze_obj = maze.MazeBoardRandom()
 
     # Initial Env
-    env = MazeBaseEnv(maze_obj, render_res=(192,192))
+    #env = MazeBaseEnv(maze_obj, render_res=(192,192))
+    env = MazeNavEnv(maze_obj, render_res=(192,192))
     state, info = env.reset()
     env.render()
 
@@ -161,7 +214,7 @@ if __name__ == "__main__":
         
         if run_step:
             state_next, reward, done, info = env.step(action)
-            print("\r", info["pose"], end="\t")
+            print("\r", info["pose"], reward, done, end="\t")
             env.render()
             state = state_next.copy()
         

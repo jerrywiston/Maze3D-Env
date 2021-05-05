@@ -21,12 +21,14 @@ def gen_data_range(env, samp_range, samp_size):
             state, info = env.reset(gen_maze=False, init_agent_info=agent_info)
             color_list.append(np.expand_dims(info["color"],0))
             depth_list.append(np.expand_dims(info["depth"],0))
-            pose_list.append(np.expand_dims(info["pose"],0))
+            pose = np.array([info["pose"]["x"], info["pose"]["y"], 0, np.sin(info["pose"]["theta"]), np.cos(info["pose"]["theta"]), 0, 0])
+            pose_list.append(np.expand_dims(pose,0))
             count += 1
             if count >= samp_size:
                 color_list.append(np.expand_dims(info_query["color"],0))
                 depth_list.append(np.expand_dims(info_query["depth"],0))
-                pose_list.append(np.expand_dims(info_query["pose"],0))
+                pose = np.array([info_query["pose"]["x"], info_query["pose"]["y"], 0, np.sin(info_query["pose"]["theta"]), np.cos(info_query["pose"]["theta"]), 0, 0])
+                pose_list.append(np.expand_dims(pose,0))
 
                 color_np = np.concatenate(color_list, 0)
                 depth_np = np.concatenate(depth_list, 0)
@@ -72,7 +74,7 @@ if __name__ == "__main__":
     save_path = "Datasets"
     if not os.path.exists(save_path):
         os.makedirs(save_path)
-    res = 96
+    res = 64
     env = maze_env.MazeBaseEnv(maze_obj, render_res=(res, res))
     dataset_path = os.path.join(save_path, maze_type)
     if not os.path.exists(dataset_path):
