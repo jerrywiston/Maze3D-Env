@@ -118,7 +118,7 @@ class MazeGridRandom(MazeGrid):
 class MazeGridDungeon(MazeGrid):
     def generate(self):
         from MazeGen import maze_gen_dungeon
-        gen = dungeon.Generator(width=24, height=24, max_rooms=5, min_room_xy=3, \
+        gen = maze_gen_dungeon.Generator(width=24, height=24, max_rooms=5, min_room_xy=3, \
             max_room_xy=8, rooms_overlap=False, random_connections=1, random_spurs=3)
         gen.gen_level()
         self.maze = np.array(gen.level, dtype=np.uint8)
