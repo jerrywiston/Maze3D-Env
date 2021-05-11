@@ -173,7 +173,7 @@ if __name__ == "__main__":
         maze_obj = maze.MazeBoardRandom()
 
     # Initial Env
-    #env = MazeBaseEnv(maze_obj, render_res=(192,192))
+    #env = MazeBaseEnv(maze_obj, render_res=(192,192), velocity=0.4, ang_velocity=np.pi/18*4)
     env = MazeNavEnv(maze_obj, render_res=(192,192))
     state, info = env.reset()
     env.render()

@@ -191,13 +191,16 @@ class MazeBoard(Maze):
         return maze_draw
     
     def collision_detect(self, agent_info):
+        x_scale = int(agent_info['x'] * self.map_scale)
+        y_scale = int(agent_info['y'] * self.map_scale)
+
         # Check in map
-        if agent_info['y'] < 0 or agent_info['y'] >= self.maze.shape[0]:
+        if y_scale < 0 or y_scale >= self.collision_map.shape[0]:
             return True
-        if agent_info['x'] < 0 or agent_info['x'] >= self.maze.shape[1]:
+        if x_scale < 0 or x_scale >= self.collision_map.shape[1]:
             return True
         # Check Collision
-        if self.collision_map[int(agent_info["y"]*self.map_scale), int(agent_info["x"]*self.map_scale), 0] == 0:
+        if self.collision_map[y_scale, x_scale, 0] == 0:
             return True
         else:
             return False
