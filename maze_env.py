@@ -63,13 +63,13 @@ class MazeBaseEnv:
         if action == 0: # Forward (W)
             agent_info_new["x"] += self.velocity*np.cos(agent_info_new["theta"])
             agent_info_new["y"] += self.velocity*np.sin(agent_info_new["theta"])
-        if action == 1: # Backward (S)
+        if action == 1: # Turn Left (Q)
+            agent_info_new["theta"] += self.ang_velocity
+        if action == 2: # Turn Right (E)
+            agent_info_new["theta"] -= self.ang_velocity
+        if action == 3: # Backward (S)
             agent_info_new["x"] -= self.velocity*np.cos(agent_info_new["theta"])
             agent_info_new["y"] -= self.velocity*np.sin(agent_info_new["theta"])
-        if action == 2: # Turn Left (Q)
-            agent_info_new["theta"] += self.ang_velocity
-        if action == 3: # Turn Rignt (E)
-            agent_info_new["theta"] -= self.ang_velocity
         if action == 4: # Shift Left (A)
             agent_info_new["x"] -= self.velocity*np.sin(agent_info_new["theta"])
             agent_info_new["y"] += self.velocity*np.cos(agent_info_new["theta"])
@@ -199,13 +199,13 @@ if __name__ == "__main__":
             action = 0
             run_step = True
         if k == ord('s'):
-            action = 1
+            action = 3
             run_step = True
         if k == ord('q'):
-            action = 2
+            action = 1
             run_step = True
         if k == ord('e'):
-            action = 3
+            action = 2
             run_step = True
         if k == ord('a'):
             action = 4
