@@ -6,12 +6,14 @@ import scene_render
 import maze
 
 class MazeBaseEnv:
-    def __init__(self, maze_obj, render_res=(192,192)):
+    def __init__(self, maze_obj, render_res=(192,192), velocity=0.1, ang_velocity=np.pi/18):
         self.maze = maze_obj
         self.render_res = render_res
         self.render_flags = pyrender.RenderFlags.SKIP_CULL_FACES | pyrender.RenderFlags.SHADOWS_DIRECTIONAL | pyrender.RenderFlags.SHADOWS_ALL
         self.rend = pyrender.OffscreenRenderer(self.render_res[0],self.render_res[1])
         self.map_scale = 16
+        self.velocity = velocity
+        self.ang_velocity = ang_velocity
         
     def _gen_scene(self):
         floor_list, wall_list, obj_list = self.maze.parse()
@@ -59,21 +61,21 @@ class MazeBaseEnv:
     def step(self, action):
         agent_info_new = self.agent_info.copy()
         if action == 0: # Forward (W)
-            agent_info_new["x"] += 0.1*np.cos(agent_info_new["theta"])
-            agent_info_new["y"] += 0.1*np.sin(agent_info_new["theta"])
+            agent_info_new["x"] += self.velocity*np.cos(agent_info_new["theta"])
+            agent_info_new["y"] += self.velocity*np.sin(agent_info_new["theta"])
         if action == 1: # Backward (S)
-            agent_info_new["x"] -= 0.1*np.cos(agent_info_new["theta"])
-            agent_info_new["y"] -= 0.1*np.sin(agent_info_new["theta"])
+            agent_info_new["x"] -= self.velocity*np.cos(agent_info_new["theta"])
+            agent_info_new["y"] -= self.velocity*np.sin(agent_info_new["theta"])
         if action == 2: # Turn Left (Q)
-            agent_info_new["theta"] += np.pi/18
+            agent_info_new["theta"] += self.ang_velocity
         if action == 3: # Turn Rignt (E)
-            agent_info_new["theta"] -= np.pi/18
+            agent_info_new["theta"] -= self.ang_velocity
         if action == 4: # Shift Left (A)
-            agent_info_new["x"] -= 0.1*np.sin(agent_info_new["theta"])
-            agent_info_new["y"] += 0.1*np.cos(agent_info_new["theta"])
+            agent_info_new["x"] -= self.velocity*np.sin(agent_info_new["theta"])
+            agent_info_new["y"] += self.velocity*np.cos(agent_info_new["theta"])
         if action == 5: # Shift Right (D)
-            agent_info_new["x"] += 0.1*np.sin(agent_info_new["theta"])
-            agent_info_new["y"] -= 0.1*np.cos(agent_info_new["theta"])
+            agent_info_new["x"] += self.velocity*np.sin(agent_info_new["theta"])
+            agent_info_new["y"] -= self.velocity*np.cos(agent_info_new["theta"])
         
         if not self.maze.collision_detect(agent_info_new):
             self.agent_info = agent_info_new
