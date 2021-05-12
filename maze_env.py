@@ -70,10 +70,20 @@ class MazeBaseEnv:
         if action == 3: # Backward (S)
             agent_info_new["x"] -= self.velocity*np.cos(agent_info_new["theta"])
             agent_info_new["y"] -= self.velocity*np.sin(agent_info_new["theta"])
-        if action == 4: # Shift Left (A)
+        
+        if action == 4: # Left + Forward 
+            agent_info_new["theta"] += self.ang_velocity
+            agent_info_new["x"] += self.velocity*np.cos(agent_info_new["theta"])
+            agent_info_new["y"] += self.velocity*np.sin(agent_info_new["theta"])
+        if action == 5: # Right + Forward 
+            agent_info_new["theta"] -= self.ang_velocity
+            agent_info_new["x"] += self.velocity*np.cos(agent_info_new["theta"])
+            agent_info_new["y"] += self.velocity*np.sin(agent_info_new["theta"])
+        
+        if action == 6: # Shift Left (A)
             agent_info_new["x"] -= self.velocity*np.sin(agent_info_new["theta"])
             agent_info_new["y"] += self.velocity*np.cos(agent_info_new["theta"])
-        if action == 5: # Shift Right (D)
+        if action == 7: # Shift Right (D)
             agent_info_new["x"] += self.velocity*np.sin(agent_info_new["theta"])
             agent_info_new["y"] -= self.velocity*np.cos(agent_info_new["theta"])
         
